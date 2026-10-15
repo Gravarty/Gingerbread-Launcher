@@ -1995,7 +1995,9 @@ public class AllApps3D extends GLSurfaceView
                 vpPosition[3] = 0.f;
                 vpBendPos[0] = l.bendY1;
                 vpBendPos[1] = l.bendY2;
-                vpScaleOffset[0] = (2.f / 480.f);
+                // 2/480 in the original: maps the 480 virtual px across the projection's
+                // [-1, 1]. Tweaks: the virtual width is 120 * columns, so scale by it.
+                vpScaleOffset[0] = 2.f / (l.portrait ? w : h);
                 vpScaleOffset[1] = l.portrait ? 0 : 1.f;
                 vpScaleOffset[2] = -(w / 2) - 0.25f;
                 vpScaleOffset[3] = -(h / 2) - 0.25f;  // -380.25 at the original 760
