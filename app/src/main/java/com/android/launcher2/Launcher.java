@@ -70,6 +70,8 @@ import android.widget.Toast;
 import android.widget.ImageView;
 import android.widget.PopupWindow;
 import android.widget.LinearLayout;
+import android.window.OnBackInvokedCallback;
+import android.window.OnBackInvokedDispatcher;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProviderInfo;
 
@@ -163,6 +165,11 @@ public final class Launcher extends Activity
     private final BroadcastReceiver mCloseSystemDialogsReceiver
             = new CloseSystemDialogsIntentReceiver();
     private final ContentObserver mWidgetObserver = new AppWidgetResetObserver();
+    private final OnBackInvokedCallback mBackCallback = new OnBackInvokedCallback() {
+        public void onBackInvoked() {
+            onBackPressed();
+        }
+    };
 
     private LayoutInflater mInflater;
 
@@ -257,7 +264,12 @@ public final class Launcher extends Activity
         Selection.setSelection(mDefaultKeySsb, 0);
 
         IntentFilter filter = new IntentFilter(Intent.ACTION_CLOSE_SYSTEM_DIALOGS);
-        registerReceiver(mCloseSystemDialogsReceiver, filter);
+        registerReceiver(mCloseSystemDialogsReceiver, filter, RECEIVER_EXPORTED);
+
+        // Android 13+ predictive back: KEYCODE_BACK/onBackPressed() are no longer delivered
+        // when targeting API 36+, so route the back gesture to the original handler.
+        getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT, mBackCallback);
     }
 
     private void checkForLocaleChange() {
@@ -881,6 +893,13 @@ public final class Launcher extends Activity
         cellInfo.screen = mWorkspace.getCurrentScreen();
         if (!findSingleSlot(cellInfo)) return;
 
+        // Android 8.0+: shortcut config activities return a pin request instead of the
+        // legacy EXTRA_SHORTCUT_* extras when the home app supports pinning.
+        final Intent pinned = PinShortcutActivity.acceptPinRequest(this, data);
+        if (pinned != null) {
+            data = pinned;
+        }
+
         final ShortcutInfo info = mModel.addShortcut(this, data, cellInfo, false);
 
         if (!mRestoring) {
@@ -1066,6 +1085,7 @@ public final class Launcher extends Activity
         dismissPreview(mNextView);
 
         unregisterReceiver(mCloseSystemDialogsReceiver);
+        getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(mBackCallback);
     }
 
     @Override
@@ -1209,11 +1229,16 @@ public final class Launcher extends Activity
 
         if (appWidget.configure != null) {
             // Launch over to configure widget, if needed
-            Intent intent = new Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE);
-            intent.setComponent(appWidget.configure);
-            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-
-            startActivityForResultSafely(intent, REQUEST_CREATE_APPWIDGET);
+            // Android 5.0+: configure activities aren't exported, the host has to start them.
+            try {
+                mWaitingForResult = true;
+                mAppWidgetHost.startAppWidgetConfigureActivityForResult(this, appWidgetId, 0,
+                        REQUEST_CREATE_APPWIDGET, null);
+            } catch (ActivityNotFoundException e) {
+                mWaitingForResult = false;
+                mAppWidgetHost.deleteAppWidgetId(appWidgetId);
+                Toast.makeText(this, R.string.activity_not_found, Toast.LENGTH_SHORT).show();
+            }
         } else {
             // Otherwise just add it
             onActivityResult(REQUEST_CREATE_APPWIDGET, Activity.RESULT_OK, data);
@@ -1490,6 +1515,11 @@ public final class Launcher extends Activity
     void startActivitySafely(Intent intent, Object tag) {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try {
+            if (PinShortcutActivity.isDeepShortcut(intent)) {
+                // Pinned shortcut (Android 8.0+), launched through LauncherApps
+                PinShortcutActivity.startDeepShortcut(this, intent);
+                return;
+            }
             startActivity(intent);
         } catch (ActivityNotFoundException e) {
             Toast.makeText(this, R.string.activity_not_found, Toast.LENGTH_SHORT).show();
@@ -1507,8 +1537,10 @@ public final class Launcher extends Activity
         try {
             startActivityForResult(intent, requestCode);
         } catch (ActivityNotFoundException e) {
+            mWaitingForResult = false;
             Toast.makeText(this, R.string.activity_not_found, Toast.LENGTH_SHORT).show();
         } catch (SecurityException e) {
+            mWaitingForResult = false;
             Toast.makeText(this, R.string.activity_not_found, Toast.LENGTH_SHORT).show();
             Log.e(TAG, "Launcher does not have the permission to launch " + intent +
                     ". Make sure to create a MAIN intent-filter for the corresponding activity " +
@@ -1810,7 +1842,7 @@ public final class Launcher extends Activity
         pickIntent.putExtra(Intent.EXTRA_TITLE, getText(R.string.title_select_shortcut));
         pickIntent.putExtras(bundle);
 
-        startActivityForResult(pickIntent, REQUEST_PICK_SHORTCUT);
+        startActivityForResultSafely(pickIntent, REQUEST_PICK_SHORTCUT);
     }
 
     private class RenameFolder {
@@ -2034,7 +2066,15 @@ public final class Launcher extends Activity
                     Intent pickIntent = new Intent(AppWidgetManager.ACTION_APPWIDGET_PICK);
                     pickIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
                     // start the pick activity
-                    startActivityForResult(pickIntent, REQUEST_PICK_APPWIDGET);
+                    try {
+                        startActivityForResult(pickIntent, REQUEST_PICK_APPWIDGET);
+                    } catch (ActivityNotFoundException e) {
+                        // No system widget picker on this device
+                        mWaitingForResult = false;
+                        mAppWidgetHost.deleteAppWidgetId(appWidgetId);
+                        Toast.makeText(Launcher.this, R.string.activity_not_found,
+                                Toast.LENGTH_SHORT).show();
+                    }
                     break;
                 }
 
@@ -2059,7 +2099,7 @@ public final class Launcher extends Activity
                             getText(R.string.title_select_live_folder));
                     pickIntent.putExtras(bundle);
 
-                    startActivityForResult(pickIntent, REQUEST_PICK_LIVE_FOLDER);
+                    startActivityForResultSafely(pickIntent, REQUEST_PICK_LIVE_FOLDER);
                     break;
                 }
 

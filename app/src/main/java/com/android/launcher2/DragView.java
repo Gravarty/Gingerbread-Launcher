@@ -153,6 +153,10 @@ public class DragView extends View implements TweenCallback {
         lp.gravity = Gravity.LEFT | Gravity.TOP;
         lp.token = windowToken;
         lp.setTitle("DragView");
+        // Port addition: position in raw screen coordinates on edge-to-edge/cutout displays
+        lp.setFitInsetsTypes(0);
+        lp.layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
         mLayoutParams = lp;
 
         mWindowManager.addView(this, lp);

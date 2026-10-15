@@ -46,6 +46,8 @@
         android:label="@string/permlab_write_settings"
         android:description="@string/permdesc_write_settings"/>
 
+    <!-- Modern Android: package visibility (API 30+). A home app has to see all launchable apps. -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
     <uses-permission android:name="android.permission.GET_TASKS" />
@@ -61,7 +63,8 @@
     <application
         android:name="com.android.launcher2.LauncherApplication"
         android:label="@string/application_name"
-        android:icon="@drawable/ic_launcher_home">
+        android:icon="@drawable/ic_launcher_home"
+        android:enableOnBackInvokedCallback="true">
 
         <activity
             android:name="com.android.launcher2.Launcher"
@@ -70,7 +73,9 @@
             android:stateNotNeeded="true"
             android:theme="@style/Theme"
             android:screenOrientation="nosensor"
-            android:windowSoftInputMode="stateUnspecified|adjustPan">
+            android:windowSoftInputMode="stateUnspecified|adjustPan"
+            android:resizeableActivity="true"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />
@@ -84,7 +89,8 @@
             android:label="@string/pick_wallpaper"
             android:icon="@drawable/ic_launcher_wallpaper"
             android:screenOrientation="nosensor"
-            android:finishOnCloseSystemDialogs="true">
+            android:finishOnCloseSystemDialogs="true"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.SET_WALLPAPER" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -94,6 +100,7 @@
         <!-- Intent received used to install shortcuts from other applications -->
         <receiver
             android:name="com.android.launcher2.InstallShortcutReceiver"
+            android:exported="true"
             android:permission="com.gravarty.launcher2.permission.INSTALL_SHORTCUT">
             <intent-filter>
                 <action android:name="com.android.launcher.action.INSTALL_SHORTCUT" />
@@ -103,16 +110,31 @@
         <!-- Intent received used to uninstall shortcuts from other applications -->
         <receiver
             android:name="com.android.launcher2.UninstallShortcutReceiver"
+            android:exported="true"
             android:permission="com.gravarty.launcher2.permission.UNINSTALL_SHORTCUT">
             <intent-filter>
                 <action android:name="com.android.launcher.action.UNINSTALL_SHORTCUT" />
             </intent-filter>
         </receiver>
 
+        <!-- Modern Android (8.0+): apps pin shortcuts through ShortcutManager instead of the
+             INSTALL_SHORTCUT broadcast. The default home app receives them here. -->
+        <activity
+            android:name="com.android.launcher2.PinShortcutActivity"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:excludeFromRecents="true"
+            android:autoRemoveFromRecents="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.content.pm.action.CONFIRM_PIN_SHORTCUT" />
+            </intent-filter>
+        </activity>
+
         <!-- The settings provider contains Home's data, like the workspace favorites -->
         <provider
             android:name="com.android.launcher2.LauncherProvider"
-            android:authorities="com.android.launcher2.settings"
+            android:exported="true"
+            android:authorities="com.gravarty.launcher2.settings"
             android:writePermission="com.gravarty.launcher2.permission.WRITE_SETTINGS"
             android:readPermission="com.gravarty.launcher2.permission.READ_SETTINGS" />
 

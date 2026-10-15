@@ -20,7 +20,9 @@ import android.content.Context;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.KeyEvent;
+import android.graphics.Insets;
 import android.view.View;
+import android.view.WindowInsets;
 import android.widget.FrameLayout;
 
 /**
@@ -37,6 +39,18 @@ public class DragLayer extends FrameLayout {
      */
     public DragLayer(Context context, AttributeSet attrs) {
         super(context, attrs);
+    }
+
+    /**
+     * Port addition: apps are drawn edge-to-edge since Android 15, so keep the launcher
+     * content (hotseat, workspace) clear of the status bar, navigation bar and cutouts.
+     */
+    @Override
+    public WindowInsets onApplyWindowInsets(WindowInsets insets) {
+        final Insets i = insets.getInsets(WindowInsets.Type.systemBars()
+                | WindowInsets.Type.displayCutout());
+        setPadding(i.left, i.top, i.right, i.bottom);
+        return WindowInsets.CONSUMED;
     }
 
     public void setDragController(DragController controller) {
