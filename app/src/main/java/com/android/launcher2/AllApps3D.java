@@ -24,11 +24,11 @@
  *  - The vertex shader (PVCurve), the fixed function fragment programs, the program store
  *    and RS's setupProjectionNormalized() projection are reproduced exactly.
  *  - All layout constants are in pixels of the original 480px wide hdpi screen. They are
- *    kept and drawn in a "virtual" 480px wide (480px high in landscape) coordinate space
- *    that is scaled to the screen, inside the area not covered by system bars.
- *  - Only the parts that depended on the Nexus One screen are generalised: rows per page
- *    follow the screen height (4 at the original 480x762), landscape columns follow the
- *    width (6 at 800), the bottom bend sits at the same distance from the edge, and
+ *    kept and drawn in a "virtual" coordinate space at the original physical size
+ *    (1 virtual px = 1 hdpi px), inside the area not covered by system bars.
+ *  - Only the parts that depended on the Nexus One screen are generalised: columns and
+ *    rows follow the screen size (4x4 at the original 480x762, 6x3 in landscape), the
+ *    grid is centered, the bottom bend sits at the same distance from the edge, and
  *    touch drag is normalised to the original screen height so scrolling still follows
  *    the finger. Texture magnification is linear since textures are no longer drawn 1:1.
  */
@@ -181,8 +181,10 @@ public class AllApps3D extends GLSurfaceView
 
         final boolean portrait;
         final float k;              // screen px per virtual px
-        final float w, h;           // virtual size of the drawer content area
+        final float w, h;           // virtual size of the icon grid area
         final Rect content;         // drawer content area in view px
+        final Rect grid;            // icon grid area in view px
+        final float contentW, contentH; // virtual size of the content area (home button)
         final int surfaceHeight;    // view px
         final int cols, rows;
         final float rowHeight;
@@ -191,7 +193,7 @@ public class AllApps3D extends GLSurfaceView
         final float touchCenterY;   // initTouchState() center, virtual px from the top
         final float refHeightPx;    // touch drag normalisation
 
-        Layout(int viewWidth, int viewHeight, Rect insets) {
+        Layout(int viewWidth, int viewHeight, Rect insets, float density) {
             content = new Rect(insets.left, insets.top,
                     Math.max(insets.left + 1, viewWidth - insets.right),
                     Math.max(insets.top + 1, viewHeight - insets.bottom));
@@ -199,20 +201,30 @@ public class AllApps3D extends GLSurfaceView
             final int cw = content.width();
             final int ch = content.height();
             portrait = cw < ch;
+
+            // One virtual px is one px at the Nexus One's hdpi density (1.5), so icons,
+            // labels and spacing keep their original physical size.
+            k = density / 1.5f;
+            contentW = cw / k;
+            contentH = ch / k;
+            grid = new Rect(content);
+
             if (portrait) {
-                k = cw / 480f;
-                w = 480f;
-                h = ch / k;
-                cols = Defines.COLUMNS_PER_PAGE_PORTRAIT;
+                // As many 120px columns as fit (4 at the original 480px), centered.
+                cols = Math.max(1, (int) (contentW / 120.f));
+                w = 120.f * cols;
+                h = contentH;
+                final int gw = Math.round(w * k);
+                grid.left = content.left + (cw - gw) / 2;
+                grid.right = grid.left + gw;
                 rowHeight = 120.f + 25.f;
                 bendY1 = 120.f;
                 bendY2 = h - 80.f;                      // 680 at the original 760
                 touchCenterY = h * 0.5f;
                 refHeightPx = REF_HEIGHT_PORTRAIT * k;
             } else {
-                k = ch / 480f;
-                h = 480f;
-                w = cw / k;
+                w = contentW;
+                h = contentH;
                 cols = Math.max(1, (int) ((w - 80.f) / 120.f)); // 6 at the original 800
                 rowHeight = 120.f + 25.f - 12.f;
                 bendY1 = 40.f;
@@ -277,7 +289,8 @@ public class AllApps3D extends GLSurfaceView
     }
 
     private void updateLayout(int w, int h) {
-        mLayout = new Layout(w, h, mContentInsets);
+        mLayout = new Layout(w, h, mContentInsets,
+                getResources().getDisplayMetrics().density);
         mColumnsPerPage = mLayout.cols;
         mRowsPerPage = mLayout.rows;
         initTouchState(w, h);
@@ -565,7 +578,7 @@ public class AllApps3D extends GLSurfaceView
         float cellHeight = l.rowHeight;
         float top = l.touchCenterY - (mRowsPerPage * cellHeight) / 2;
         for (int i = 0; i <= mRowsPerPage; i++) {
-            mTouchYBorders[i] = l.content.top
+            mTouchYBorders[i] = l.grid.top
                     + (int) ((top + (i * cellHeight) - statusBarShift) * l.k);
         }
 
@@ -573,7 +586,7 @@ public class AllApps3D extends GLSurfaceView
         // TODO: Put this in a config file/define
         float columnWidth = 120;
         for (int i = 0; i < mColumnsPerPage + 1; i++) {
-            mTouchXBorders[i] = l.content.left + (int) (x * l.k);
+            mTouchXBorders[i] = l.grid.left + (int) (x * l.k);
             x += columnWidth;
         }
     }
@@ -1648,12 +1661,13 @@ public class AllApps3D extends GLSurfaceView
                 final Params params = mRenderer.params;
                 setColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-                float w = getWidth();
-                float h = getHeight();
+                // Port: the home button uses the whole content area, the icons the grid area.
+                float w = mRenderer.layout.contentW;
+                float h = mRenderer.layout.contentH;
 
                 float x;
                 float y;
-                if (getWidth() > getHeight()) {
+                if (w > h) {
                     x = w - (params.homeButtonTextureWidth * (1 - g_Animation)) + 20;
                     y = (h - params.homeButtonTextureHeight) * 0.5f;
                 } else {
@@ -1928,8 +1942,8 @@ public class AllApps3D extends GLSurfaceView
                 }
 
                 // Draw inside the area not covered by system bars (GL origin bottom left).
-                GLES20.glViewport(l.content.left, l.surfaceHeight - l.content.bottom,
-                        l.content.width(), l.content.height());
+                GLES20.glViewport(l.grid.left, l.surfaceHeight - l.grid.bottom,
+                        l.grid.width(), l.grid.height());
 
                 // mPSIcons
                 GLES20.glDisable(GLES20.GL_DEPTH_TEST);   // DepthFunc.ALWAYS
@@ -1957,13 +1971,15 @@ public class AllApps3D extends GLSurfaceView
                 vpPosition[3] = 0.f;
                 vpBendPos[0] = l.bendY1;
                 vpBendPos[1] = l.bendY2;
-                vpScaleOffset[0] = (2.f / 480.f);
+                // 2/480 in the original: maps the 480px wide screen onto the projection's
+                // [-1, 1]. The virtual grid width/height varies with the screen now.
+                vpScaleOffset[0] = 2.f / (l.portrait ? w : h);
                 vpScaleOffset[1] = l.portrait ? 0 : 1.f;
                 vpScaleOffset[2] = -(w / 2) - 0.25f;
                 vpScaleOffset[3] = -(h / 2) - 0.25f;  // -380.25 at the original 760
 
                 setupProjectionNormalized(w, h);
-                Matrix.orthoM(mOrtho, 0, 0, w, 0, h, -1, 1);
+                Matrix.orthoM(mOrtho, 0, 0, l.contentW, 0, l.contentH, -1, 1);
             }
 
             /** ProgramVertex.MatrixAllocation.setupProjectionNormalized(w, h). */
@@ -2054,6 +2070,10 @@ public class AllApps3D extends GLSurfaceView
                 };
                 mQuad.clear();
                 mQuad.put(q).position(0);
+
+                final Layout l = layout;
+                GLES20.glViewport(l.content.left, l.surfaceHeight - l.content.bottom,
+                        l.content.width(), l.content.height());
 
                 final int program = mSpriteRgbaProgram;
                 GLES20.glUseProgram(program);

@@ -282,11 +282,11 @@ final class Utilities {
             final Resources resources = context.getResources();
 
             final DisplayMetrics metrics = resources.getDisplayMetrics();
-            // Port: the labels are textures for AllApps3D, whose layout was made for a
-            // 480px wide hdpi screen (title_texture_width is 120px, text 13sp @ 1.5).
-            // Render them at that layout scaled to this screen, instead of display density.
-            final float k = Math.min(metrics.widthPixels, metrics.heightPixels) / 480f;
-            final float scale = 1.5f * k;
+            // Port: the labels are textures for AllApps3D, laid out in hdpi px
+            // (title_texture_width is 120px). AllApps3D draws them at their original
+            // physical size, so scale the px values from hdpi to this density.
+            final float scale = metrics.density;
+            final float k = scale / 1.5f;
             mDensity = metrics.densityDpi;
 
             final float paddingLeft = 2.0f * scale;
