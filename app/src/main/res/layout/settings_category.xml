@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tweaks: preference_category.xml of Gingerbread 2.3.7 (Widget.TextView.ListSeparator) -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="25dip"
+    android:background="@drawable/gb_dark_header"
+    android:textStyle="bold"
+    android:textColor="@color/gb_secondary_text_dark"
+    android:textSize="14sp"
+    android:gravity="center_vertical"
+    android:paddingLeft="5sp" />

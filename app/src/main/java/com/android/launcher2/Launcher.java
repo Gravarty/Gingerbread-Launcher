@@ -131,7 +131,7 @@ public final class Launcher extends Activity
     static final int NUMBER_CELLS_Y = 4;
 
     /** Port: Gingerbread's system font (Droid Sans) instead of today's system font. */
-    static boolean useDroidSans(Context context) {
+    public static boolean useDroidSans(Context context) {
         return true;
     }
 

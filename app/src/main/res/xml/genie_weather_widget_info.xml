@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Port: xml/miniwidget_info of "News and Weather" 1.3.01; weather updated every 30 min -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="294dp"
+    android:minHeight="72dp"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/genie_weather_widget"
+    android:configure="com.google.android.apps.genie.geniewidget.WeatherWidgetConfigure"
+    android:widgetFeatures="reconfigurable">
+</appwidget-provider>

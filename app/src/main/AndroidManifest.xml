@@ -47,6 +47,8 @@
     <!-- Port: the clock widget opens the alarms (ACTION_SHOW_ALARMS); some clock apps
          (e.g. Samsung's) require this permission for it -->
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+    <!-- Port: the weather widget of "News and Weather" (OpenWeatherMap) -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <!-- Port: the "Power Control" widget from Settings -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
@@ -159,6 +161,25 @@
             <meta-data android:name="android.appwidget.provider"
                 android:resource="@xml/analog_appwidget" />
         </receiver>
+
+        <!-- Port: the weather widget of Google's "News and Weather" 1.3.01 -->
+        <receiver android:name="com.google.android.apps.genie.geniewidget.WeatherWidgetProvider"
+            android:label="@string/genie_widget_weather" android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/genie_weather_widget_info" />
+        </receiver>
+        <activity android:name="com.google.android.apps.genie.geniewidget.WeatherWidgetConfigure"
+            android:label="@string/genie_widget_weather"
+            android:theme="@style/Theme.GenieConfigure"
+            android:excludeFromRecents="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
 
         <!-- Port: the "Power Control" widget from AOSP Settings (android-2.3.7_r1).
              The state broadcasts are forwarded by LauncherApplication. -->
