@@ -21,4 +21,10 @@
     <string name="genie_save">Save</string>
     <string name="genie_missing">Please enter the API key and the location.</string>
     <string name="genie_invalid_key">Invalid API key.</string>
+    <string name="genie_refresh_interval">Refresh interval</string>
+    <string name="genie_minutes">%d min</string>
+    <plurals name="genie_hours">
+        <item quantity="one">%d hour</item>
+        <item quantity="other">%d hours</item>
+    </plurals>
 </resources>
