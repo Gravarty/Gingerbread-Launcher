@@ -342,7 +342,7 @@ public final class Launcher extends Activity
     }
 
     /** Port: Gingerbread's system font (Droid Sans) instead of today's system font. */
-    static boolean useDroidSans(Context context) {
+    public static boolean useDroidSans(Context context) {
         // Tweaks: or the system font
         return !context.getSharedPreferences(TWEAKS_PREFERENCES, MODE_PRIVATE)
                 .getBoolean(TWEAK_SYSTEM_FONT, false);

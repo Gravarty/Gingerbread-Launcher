@@ -22,6 +22,11 @@
         <item name="android:windowNoTitle">true</item>
     </style>
 
+    <!-- Port: settings of the weather widget (Gingerbread dark theme, own title bar) -->
+    <style name="Theme.GenieConfigure" parent="android:Theme.NoTitleBar">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+
     <!-- Port: Gingerbread's system font, applied by Launcher.useDroidSans() -->
     <style name="DroidSansFont">
         <item name="android:fontFamily">@font/droid_sans</item>
