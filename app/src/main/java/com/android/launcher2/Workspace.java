@@ -894,11 +894,22 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
                 final float deltaX = mLastMotionX - x;
                 mLastMotionX = x;
 
-                if (deltaX < 0) {
+                final FeedOverlay feed = mLauncher.getFeed(); // Tweaks: Google feed
+                if (feed != null && mFeedDistance > 0 && deltaX > 0) {
+                    // Tweaks: pushing the feed back first
+                    mFeedDistance = Math.max(0, mFeedDistance - deltaX);
+                    feed.setScroll(Math.min(1f, mFeedDistance / getWidth()));
+                } else if (deltaX < 0) {
                     if (mTouchX > 0) {
                         mTouchX += Math.max(-mTouchX, deltaX);
                         mSmoothingTime = System.nanoTime() / NANOTIME_DIV;
                         invalidate();
+                    } else if (feed != null) {
+                        // Tweaks: overscroll left of the first screen pulls in the feed
+                        // (Launcher3's Workspace.overScroll())
+                        feed.startScroll();
+                        mFeedDistance -= deltaX;
+                        feed.setScroll(Math.min(1f, mFeedDistance / getWidth()));
                     }
                 } else if (deltaX > 0) {
                     final float availableToScroll = getChildAt(getChildCount() - 1).getRight() -
@@ -914,6 +925,7 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
             }
             break;
         case MotionEvent.ACTION_UP:
+            endFeedScroll(); // Tweaks
             if (mTouchState == TOUCH_STATE_SCROLLING) {
                 final VelocityTracker velocityTracker = mVelocityTracker;
                 velocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
@@ -944,6 +956,7 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
             releaseVelocityTracker();
             break;
         case MotionEvent.ACTION_CANCEL:
+            endFeedScroll(); // Tweaks
             if (mTouchState == TOUCH_STATE_SCROLLING) {
                 final int screenWidth = getWidth();
                 final int whichScreen = (getScrollX() + (screenWidth / 2)) / screenWidth;
@@ -961,6 +974,15 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
         return true;
     }
     
+    // Tweaks: Google feed, overscroll distance left of the first screen
+    private float mFeedDistance;
+
+    private void endFeedScroll() {
+        mFeedDistance = 0;
+        final FeedOverlay feed = mLauncher.getFeed();
+        if (feed != null) feed.endScroll();
+    }
+
     private void acquireVelocityTrackerAndAddMovement(MotionEvent ev) {
         if (mVelocityTracker == null) {
             mVelocityTracker = VelocityTracker.obtain();

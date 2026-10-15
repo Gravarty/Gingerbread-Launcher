@@ -295,6 +295,9 @@ public final class Launcher extends Activity
     static boolean SWIPE_DOWN_NOTIFICATIONS = false;
     // Tweaks: swipe up opens all apps, following the finger
     static final String TWEAK_SWIPE_UP_ALL_APPS = "swipe_up_all_apps";
+    // Tweaks: Google feed left of the first screen (FeedOverlay.PROVIDER_*)
+    static final String TWEAK_FEED = "feed";
+    static int FEED = FeedOverlay.PROVIDER_OFF;
     static boolean SWIPE_UP_ALL_APPS = false;
     // Tweaks: no black system bars, the wallpaper shows behind them
     static final String TWEAK_NO_BAR_BACKGROUNDS = "no_bar_backgrounds";
@@ -328,6 +331,7 @@ public final class Launcher extends Activity
         DEFAULT_SCREEN = (SCREEN_COUNT - 1) / 2; // the middle one, 2 of 5 as in stock
         SWIPE_DOWN_NOTIFICATIONS = prefs.getBoolean(TWEAK_SWIPE_DOWN_NOTIFICATIONS, false);
         SWIPE_UP_ALL_APPS = prefs.getBoolean(TWEAK_SWIPE_UP_ALL_APPS, false);
+        FEED = prefs.getInt(TWEAK_FEED, FeedOverlay.PROVIDER_OFF);
         NO_BAR_BACKGROUNDS = prefs.getBoolean(TWEAK_NO_BAR_BACKGROUNDS, false);
         ICON_SHAPE = Math.max(0, Math.min(Utilities.ICON_SHAPE_MASKS.length - 1,
                 prefs.getInt(TWEAK_ICON_SHAPE, 0)));
@@ -482,6 +486,7 @@ public final class Launcher extends Activity
         }
         setContentView(R.layout.launcher);
         setupViews();
+        if (FEED != FeedOverlay.PROVIDER_OFF) mFeed = new FeedOverlay(this, FEED); // Tweaks
 
         registerContentObservers();
 
@@ -846,6 +851,7 @@ public final class Launcher extends Activity
     protected void onResume() {
         super.onResume();
         mPaused = false;
+        if (mFeed != null) mFeed.onResume(); // Tweaks
         if (Settings.sChanged) { // Tweaks: settings were changed
             Settings.sChanged = false;
             if (Settings.sIconsChanged) { // icon shape: create all icons again
@@ -872,6 +878,7 @@ public final class Launcher extends Activity
     protected void onPause() {
         super.onPause();
         mPaused = true;
+        if (mFeed != null) mFeed.onPause(); // Tweaks
         getDragLayer().clearAllResizeFrames(); // Tweaks
         if (mAllAppsGrid instanceof android.opengl.GLSurfaceView) {
             ((android.opengl.GLSurfaceView) mAllAppsGrid).onPause();
@@ -1280,6 +1287,10 @@ public final class Launcher extends Activity
             boolean alreadyOnHome = ((intent.getFlags() & Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT)
                         != Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT);
             boolean allAppsVisible = isAllAppsVisible();
+            if (mFeed != null && mFeed.isShowing()) { // Tweaks: home closes the feed
+                mFeed.hide(alreadyOnHome);
+                if (alreadyOnHome) return;
+            }
             if (!mWorkspace.isDefaultScreenShowing()) {
                 mWorkspace.moveToDefaultScreen(alreadyOnHome && !allAppsVisible);
             }
@@ -1346,6 +1357,7 @@ public final class Launcher extends Activity
     @Override
     public void onDestroy() {
         super.onDestroy();
+        if (mFeed != null) mFeed.onDestroy(); // Tweaks
 
         try {
             mAppWidgetHost.stopListening();
@@ -2442,6 +2454,37 @@ public final class Launcher extends Activity
         return layout.rectToCell(info.minResizeWidth, info.minResizeHeight);
     }
 
+    // Tweaks: Google feed
+    private FeedOverlay mFeed;
+
+    FeedOverlay getFeed() {
+        return mFeed != null && mFeed.isAttached() ? mFeed : null;
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (mFeed != null) mFeed.onStart();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (mFeed != null) mFeed.onStop();
+    }
+
+    @Override
+    public void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        if (mFeed != null) mFeed.onAttachedToWindow();
+    }
+
+    @Override
+    public void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        if (mFeed != null) mFeed.onDetachedFromWindow();
+    }
+
     // Tweaks
     DragLayer getDragLayer() {
         return (DragLayer) findViewById(R.id.drag_layer);
@@ -2492,6 +2535,10 @@ public final class Launcher extends Activity
                         TWEAK_SWIPE_DOWN_NOTIFICATIONS);
                 addCheck(R.string.tweaks_swipe_up_all_apps,
                         R.string.tweaks_swipe_up_all_apps_summary, TWEAK_SWIPE_UP_ALL_APPS);
+                addCategory(R.string.tweaks_category_feed);
+                addChoice(R.string.tweaks_feed, TWEAK_FEED, new int[] {
+                        R.string.tweaks_feed_off, R.string.tweaks_feed_google,
+                        R.string.tweaks_feed_aidl_bridge });
             } else if (page == R.string.tweaks_category_drawer) {
                 addCategory(R.string.tweaks_category_grid);
                 addNumber(R.string.tweaks_columns, TWEAK_DRAWER_COLUMNS, 2, 7, 0, true);

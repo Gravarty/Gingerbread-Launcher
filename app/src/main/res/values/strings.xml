@@ -216,4 +216,9 @@
     <string name="default_browser_url" translatable="false">
         http://www.google.com/m?client=ms-{CID}&amp;source=android-home-hotseat</string>
 
+    <string name="tweaks_category_feed">"Google feed"</string>
+    <string name="tweaks_feed">"Feed"</string>
+    <string name="tweaks_feed_off">"Off"</string>
+    <string name="tweaks_feed_google">"Google app"</string>
+    <string name="tweaks_feed_aidl_bridge">"AIDL Bridge"</string>
 </resources>
