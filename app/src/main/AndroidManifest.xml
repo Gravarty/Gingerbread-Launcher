@@ -47,6 +47,12 @@
     <!-- Port: the clock widget opens the alarms (ACTION_SHOW_ALARMS); some clock apps
          (e.g. Samsung's) require this permission for it -->
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+    <!-- Port: the "Power Control" widget from Settings -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />
+    <uses-permission android:name="android.permission.WRITE_SYNC_SETTINGS" />
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
     <uses-feature android:name="android.software.live_wallpaper" android:required="false" />
@@ -161,6 +167,17 @@
             </intent-filter>
             <meta-data android:name="android.appwidget.provider"
                 android:resource="@xml/analog_appwidget" />
+        </receiver>
+
+        <!-- Port: the "Power Control" widget from AOSP Settings (android-2.3.7_r1).
+             The state broadcasts are forwarded by LauncherApplication. -->
+        <receiver android:name="com.android.settings.widget.SettingsAppWidgetProvider"
+            android:label="@string/gadget_title" android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/power_widget_info" />
         </receiver>
 
         <!-- Port: the "Nexus" live wallpaper from AOSP packages/wallpapers/Basic. -->
