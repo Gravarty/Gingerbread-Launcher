@@ -59,6 +59,78 @@ public class DragLayer extends FrameLayout {
      * black Gingerbread status bar) and only pads its content.
      */
     private final Rect mInsets = new Rect();
+
+    /*
+     * Tweaks: swipe up on the home screen (workspace or dock) opens all apps, the open
+     * animation following the finger; swiping back down closes it again.
+     */
+    private boolean mAllAppsSwiping;
+    private boolean mAllAppsSwipeCandidate;
+    private float mSwipeDownX, mSwipeDownY;
+    private android.view.VelocityTracker mSwipeVelocity;
+
+    private boolean interceptAllAppsSwipe(MotionEvent ev) {
+        if (!Launcher.SWIPE_UP_ALL_APPS) return false;
+        final Launcher launcher = (Launcher) getContext();
+        switch (ev.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                mAllAppsSwiping = false;
+                mAllAppsSwipeCandidate = launcher.getAllApps3D() != null
+                        && !launcher.isAllAppsVisible() && !mDragController.isDragging()
+                        && mCurrentResizeFrame == null;
+                mSwipeDownX = ev.getX();
+                mSwipeDownY = ev.getY();
+                return false;
+            case MotionEvent.ACTION_MOVE: {
+                if (!mAllAppsSwipeCandidate || mDragController.isDragging()) return false;
+                final float dx = Math.abs(ev.getX() - mSwipeDownX);
+                final float dy = mSwipeDownY - ev.getY();
+                final int slop = android.view.ViewConfiguration.get(getContext())
+                        .getScaledTouchSlop();
+                if (dy > slop && dy > dx) {
+                    mAllAppsSwiping = true;
+                    mAllAppsSwipeCandidate = false;
+                    mSwipeDownY -= slop; // start at 0 from here on
+                    mSwipeVelocity = android.view.VelocityTracker.obtain();
+                    mSwipeVelocity.addMovement(ev);
+                    return true;
+                }
+                if (dx > slop || -dy > slop) mAllAppsSwipeCandidate = false;
+                return false;
+            }
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                mAllAppsSwipeCandidate = false;
+                return false;
+        }
+        return false;
+    }
+
+    private void allAppsSwipe(MotionEvent ev) {
+        final AllApps3D allApps = ((Launcher) getContext()).getAllApps3D();
+        if (allApps == null) return;
+        mSwipeVelocity.addMovement(ev);
+        switch (ev.getActionMasked()) {
+            case MotionEvent.ACTION_MOVE:
+                allApps.dragZoom((mSwipeDownY - ev.getY()) / AllApps3D.gestureDistance(this));
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL: {
+                mAllAppsSwiping = false;
+                mSwipeVelocity.computeCurrentVelocity(1000);
+                final float v = -mSwipeVelocity.getYVelocity(); // px/s, up > 0
+                mSwipeVelocity.recycle();
+                mSwipeVelocity = null;
+                final float minFling = android.view.ViewConfiguration.get(getContext())
+                        .getScaledMinimumFlingVelocity() * 4;
+                final float zoom = (mSwipeDownY - ev.getY()) / AllApps3D.gestureDistance(this);
+                final boolean open = ev.getActionMasked() == MotionEvent.ACTION_UP
+                        && (v > minFling || (v > -minFling && zoom > 0.5f));
+                allApps.settleZoom(open, Math.abs(v) / AllApps3D.gestureDistance(this));
+                break;
+            }
+        }
+    }
     private Rect mAllAppsBasePadding;
 
     @Override
@@ -168,6 +240,9 @@ public class DragLayer extends FrameLayout {
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
+        if (interceptAllAppsSwipe(ev)) { // Tweaks
+            return true;
+        }
         // Tweaks (from ICS)
         if (ev.getAction() == MotionEvent.ACTION_DOWN) {
             if (handleTouchDown(ev)) {
@@ -180,6 +255,10 @@ public class DragLayer extends FrameLayout {
 
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
+        if (mAllAppsSwiping) { // Tweaks
+            allAppsSwipe(ev);
+            return true;
+        }
         // Tweaks (from ICS)
         boolean handled = false;
         int action = ev.getAction();

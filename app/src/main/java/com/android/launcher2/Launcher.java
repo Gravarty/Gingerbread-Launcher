@@ -293,6 +293,9 @@ public final class Launcher extends Activity
         return b;
     }
     static boolean SWIPE_DOWN_NOTIFICATIONS = false;
+    // Tweaks: swipe up opens all apps, following the finger
+    static final String TWEAK_SWIPE_UP_ALL_APPS = "swipe_up_all_apps";
+    static boolean SWIPE_UP_ALL_APPS = false;
     // Tweaks: no black system bars, the wallpaper shows behind them
     static final String TWEAK_NO_BAR_BACKGROUNDS = "no_bar_backgrounds";
     static boolean NO_BAR_BACKGROUNDS = false;
@@ -310,6 +313,7 @@ public final class Launcher extends Activity
         SCREEN_COUNT = Math.max(1, Math.min(5, prefs.getInt(TWEAK_HOME_SCREENS, 5)));
         DEFAULT_SCREEN = (SCREEN_COUNT - 1) / 2; // the middle one, 2 of 5 as in stock
         SWIPE_DOWN_NOTIFICATIONS = prefs.getBoolean(TWEAK_SWIPE_DOWN_NOTIFICATIONS, false);
+        SWIPE_UP_ALL_APPS = prefs.getBoolean(TWEAK_SWIPE_UP_ALL_APPS, false);
         NO_BAR_BACKGROUNDS = prefs.getBoolean(TWEAK_NO_BAR_BACKGROUNDS, false);
         ICON_SHAPE = Math.max(0, Math.min(Utilities.ICON_SHAPE_MASKS.length - 1,
                 prefs.getInt(TWEAK_ICON_SHAPE, 0)));
@@ -2200,6 +2204,11 @@ public final class Launcher extends Activity
         }
     }
 
+    // Tweaks: all apps following a finger (swipe up on the home screen, down in all apps)
+    AllApps3D getAllApps3D() {
+        return mAllAppsGrid instanceof AllApps3D ? (AllApps3D) mAllAppsGrid : null;
+    }
+
     void showAllApps(boolean animated) {
         getDragLayer().clearAllResizeFrames(); // Tweaks
         mAllAppsShown = true; // Port
@@ -2442,6 +2451,8 @@ public final class Launcher extends Activity
                 addCheck(R.string.tweaks_swipe_down_notifications,
                         R.string.tweaks_swipe_down_notifications_summary,
                         TWEAK_SWIPE_DOWN_NOTIFICATIONS);
+                addCheck(R.string.tweaks_swipe_up_all_apps,
+                        R.string.tweaks_swipe_up_all_apps_summary, TWEAK_SWIPE_UP_ALL_APPS);
             } else if (page == R.string.tweaks_category_drawer) {
                 addCategory(R.string.tweaks_category_grid);
                 addNumber(R.string.tweaks_columns, TWEAK_DRAWER_COLUMNS, 2, 7, 0, true);

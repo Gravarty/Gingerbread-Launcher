@@ -70,6 +70,10 @@ public class DragController {
     /** Whether or not we're dragging. */
     private boolean mDragging;
 
+    boolean isDragging() { // Tweaks
+        return mDragging;
+    }
+
     /** X coordinate of the down event. */
     private float mMotionDownX;
 

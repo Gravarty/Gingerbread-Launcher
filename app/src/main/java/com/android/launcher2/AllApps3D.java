@@ -670,6 +670,10 @@ public class AllApps3D extends GLSurfaceView
             return true;
         }
 
+        if (handleCloseDrag(ev)) { // Tweaks
+            return true;
+        }
+
         super.onTouchEvent(ev);
 
         int x = (int)ev.getX();
@@ -876,6 +880,9 @@ public class AllApps3D extends GLSurfaceView
      * @param zoom [0..1] 0 is hidden, 1 is open
      */
     public void zoom(float zoom, boolean animate) {
+        // Tweaks: speed of this zoom (a gesture continues at the finger's speed)
+        sZoomSpeed = mNextZoomSpeed;
+        mNextZoomSpeed = ZOOM_SPEED;
         cancelLongPress();
         sNextZoom = zoom;
         sAnimateNextZoom = animate;
@@ -895,6 +902,99 @@ public class AllApps3D extends GLSurfaceView
      */
     public boolean isVisible() {
         return sRollo != null && mZoom > 0.001f;
+    }
+
+    /*
+     * Tweaks: the drawer following a finger. The whole open animation depends on the zoom
+     * (0..1), so the finger sets it directly; on release it continues to open or closed at
+     * least as fast as the finger moved.
+     */
+    static final float ZOOM_SPEED = 1.7f; // zoom per second of the original animation
+    static volatile float sZoomSpeed = ZOOM_SPEED;
+    private float mNextZoomSpeed = ZOOM_SPEED;
+
+    /** Sets the zoom directly (while a finger drags). */
+    void dragZoom(float zoom) {
+        zoom = Math.max(0, Math.min(1, zoom));
+        cancelLongPress();
+        sNextZoom = zoom;
+        sAnimateNextZoom = false;
+        mZoom = zoom;
+        if (!sRollo.mInitialized || !mHaveSurface) {
+            sZoomDirty = true;
+        } else {
+            sRollo.setZoom(zoom, false);
+        }
+    }
+
+    /** Finger released: open or close, continuing with speed (zoom per second). */
+    void settleZoom(boolean open, float speed) {
+        mNextZoomSpeed = Math.max(ZOOM_SPEED, Math.min(speed, 12.f));
+        if (open) {
+            mLauncher.showAllApps(true);
+        } else {
+            mLauncher.closeAllApps(true);
+        }
+        mNextZoomSpeed = ZOOM_SPEED;
+    }
+
+    /** Distance in px for a full open/close gesture. */
+    static float gestureDistance(View v) {
+        return v.getHeight() * 0.5f;
+    }
+
+    // Tweaks: swipe down at the top of the list closes all apps
+    private boolean mCloseDragging;
+    private float mCloseDownY;
+    private boolean mCloseAllowed;
+
+    private boolean handleCloseDrag(MotionEvent ev) {
+        if (!Launcher.SWIPE_UP_ALL_APPS) return false;
+        switch (ev.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                mCloseDragging = false;
+                mCloseDownY = ev.getRawY();
+                // only at the top of the list and when it isn't moving
+                mCloseAllowed = sRollo.mScrollPos <= 0.01f && Math.abs(mVelocity) < 0.01f;
+                return false;
+            case MotionEvent.ACTION_MOVE: {
+                final float dy = ev.getRawY() - mCloseDownY;
+                if (!mCloseDragging) {
+                    if (!mCloseAllowed || dy < mSlop) return false;
+                    // take over from the list
+                    mCloseDragging = true;
+                    cancelLongPress();
+                    mCurrentIconIndex = -1;
+                    sRollo.clearSelectedIcon();
+                    sRollo.mState.newTouchDown = 0;
+                    sRollo.mState.save();
+                    mTouchTracking = TRACKING_NONE;
+                    if (mVelocityTracker != null) mVelocityTracker.recycle();
+                    mVelocityTracker = VelocityTracker.obtain();
+                    mCloseDownY += mSlop;
+                }
+                mVelocityTracker.addMovement(ev);
+                dragZoom(1.f - Math.max(0, ev.getRawY() - mCloseDownY) / gestureDistance(this));
+                return true;
+            }
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL: {
+                if (!mCloseDragging) return false;
+                mCloseDragging = false;
+                mVelocityTracker.addMovement(ev);
+                mVelocityTracker.computeCurrentVelocity(1000);
+                final float v = mVelocityTracker.getYVelocity(); // px/s, down > 0
+                mVelocityTracker.recycle();
+                mVelocityTracker = null;
+                final float minFling =
+                        ViewConfiguration.get(getContext()).getScaledMinimumFlingVelocity() * 4;
+                final boolean close = ev.getActionMasked() == MotionEvent.ACTION_UP
+                        && (v > minFling || (v > -minFling && mZoom < 0.5f));
+                settleZoom(!close, Math.abs(v) / gestureDistance(this));
+                return true;
+            }
+        }
+        return mCloseDragging;
     }
 
     public boolean isOpaque() {
@@ -1791,7 +1891,7 @@ public class AllApps3D extends GLSurfaceView
 
                 if (g_Zoom != state.zoomTarget) {
                     // Port: follows the system animation speed (animator duration scale)
-                    float dz = g_AnimScale > 0 ? g_DT * 1.7f / g_AnimScale : 1.f;
+                    float dz = g_AnimScale > 0 ? g_DT * sZoomSpeed / g_AnimScale : 1.f;
                     if (state.zoomTarget < 0.5f) {
                         dz = -dz;
                     }
