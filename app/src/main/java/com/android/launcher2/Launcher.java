@@ -1970,6 +1970,8 @@ public final class Launcher extends Activity
     }
 
     private void showPreviews(View anchor) {
+        // Tweaks: with a single screen there's nothing to jump to
+        if (mWorkspace.getChildCount() < 2) return;
         showPreviews(anchor, 0, mWorkspace.getChildCount());
     }
 
@@ -1979,7 +1981,8 @@ public final class Launcher extends Activity
 
         CellLayout cell = ((CellLayout) workspace.getChildAt(start));
         
-        float max = workspace.getChildCount();
+        // Tweaks: thumbnails as large as with the stock 5 screens, also with fewer screens
+        float max = Math.max(workspace.getChildCount(), 5);
         
         final Rect r = new Rect();
         resources.getDrawable(R.drawable.preview_background).getPadding(r);
@@ -2036,7 +2039,7 @@ public final class Launcher extends Activity
 
         final PopupWindow p = new PopupWindow(this);
         p.setContentView(preview);
-        p.setWidth((int) (sWidth * count + extraW));
+        p.setWidth((int) (sWidth * count + (r.left + r.right) * count)); // Tweaks: count
         p.setHeight((int) (sHeight + extraH));
         p.setAnimationStyle(R.style.AnimationPreview);
         p.setOutsideTouchable(true);
