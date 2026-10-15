@@ -49,6 +49,36 @@ public class LauncherApplication extends Application {
         ContentResolver resolver = getContentResolver();
         resolver.registerContentObserver(LauncherSettings.Favorites.CONTENT_URI, true,
                 mFavoritesObserver);
+
+        // Port: the "Power Control" widget no longer gets these as a manifest receiver
+        final android.content.BroadcastReceiver powerWidget =
+                new android.content.BroadcastReceiver() {
+            @Override
+            public void onReceive(android.content.Context context, Intent intent) {
+                com.android.settings.widget.SettingsAppWidgetProvider.onStateChanged(
+                        context, intent);
+            }
+        };
+        filter = new IntentFilter(android.net.wifi.WifiManager.WIFI_STATE_CHANGED_ACTION);
+        filter.addAction(android.bluetooth.BluetoothAdapter.ACTION_STATE_CHANGED);
+        filter.addAction(android.location.LocationManager.PROVIDERS_CHANGED_ACTION);
+        filter.addAction(android.location.LocationManager.MODE_CHANGED_ACTION);
+        registerReceiver(powerWidget, filter, RECEIVER_EXPORTED);
+        final Handler handler = new Handler();
+        ContentResolver.addStatusChangeListener(ContentResolver.SYNC_OBSERVER_TYPE_SETTINGS,
+                which -> handler.post(() -> com.android.settings.widget
+                        .SettingsAppWidgetProvider.onStateChanged(this, null)));
+        final ContentObserver brightness = new ContentObserver(handler) {
+            @Override
+            public void onChange(boolean selfChange) {
+                com.android.settings.widget.SettingsAppWidgetProvider.onStateChanged(
+                        LauncherApplication.this, null);
+            }
+        };
+        resolver.registerContentObserver(android.provider.Settings.System.getUriFor(
+                android.provider.Settings.System.SCREEN_BRIGHTNESS), false, brightness);
+        resolver.registerContentObserver(android.provider.Settings.System.getUriFor(
+                android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE), false, brightness);
     }
 
     /**

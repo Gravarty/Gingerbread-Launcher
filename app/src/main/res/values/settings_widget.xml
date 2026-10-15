@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Port: strings of the "Power Control" widget from AOSP Settings (android-2.3.7_r1) -->
+<resources>
+    <string name="gadget_title">Power Control</string>
+</resources>
