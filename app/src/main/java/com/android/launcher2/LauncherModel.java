@@ -399,6 +399,14 @@ public class LauncherModel extends BroadcastReceiver {
         }
     }
 
+    // Tweaks: load the apps again (icon shape changed)
+    void forceReload() {
+        synchronized (mLock) {
+            mAllAppsLoaded = false;
+            mWorkspaceLoaded = false;
+        }
+    }
+
     public void startLoader(Context context, boolean isLaunching) {
         synchronized (mLock) {
             if (DEBUG_LOADERS) {

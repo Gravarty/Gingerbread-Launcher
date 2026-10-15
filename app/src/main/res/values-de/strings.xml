@@ -46,6 +46,15 @@
     <string name="tweaks_dock_mail">"E-Mail"</string>
     <string name="tweaks_dock_camera">"Kamera"</string>
     <string name="tweaks_reset">"Standard"</string>
+    <string name="tweaks_category_icons">"Symbole"</string>
+    <string name="tweaks_icons_summary">"Symbolform"</string>
+    <string name="tweaks_icon_shape">"Symbolform"</string>
+    <string name="tweaks_icon_shape_system">"System"</string>
+    <string name="tweaks_icon_shape_circle">"Kreis"</string>
+    <string name="tweaks_icon_shape_squircle">"Squircle"</string>
+    <string name="tweaks_icon_shape_rounded_rect">"Abgerundetes Rechteck"</string>
+    <string name="tweaks_icon_shape_teardrop">"Tropfen"</string>
+    <string name="tweaks_icon_shape_square">"Quadrat"</string>
     <string name="tweaks_category_display">"Darstellung"</string>
     <string name="tweaks_no_bar_backgrounds">"Ohne schwarze Leisten"</string>
     <string name="tweaks_no_bar_backgrounds_summary">"Hintergrundbild hinter Status- und Navigationsleiste anzeigen"</string>

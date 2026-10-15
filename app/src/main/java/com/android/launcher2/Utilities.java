@@ -159,12 +159,115 @@ final class Utilities {
             }
 
             sOldBounds.set(icon.getBounds());
-            icon.setBounds(left, top, left+width, top+height);
-            icon.draw(canvas);
+            if (Launcher.ICON_SHAPE != 0
+                    && icon instanceof android.graphics.drawable.AdaptiveIconDrawable) {
+                drawAdaptiveIcon((android.graphics.drawable.AdaptiveIconDrawable) icon,
+                        canvas, left, top, width, height); // Tweaks: icon shape
+            } else {
+                icon.setBounds(left, top, left+width, top+height);
+                icon.draw(canvas);
+            }
             icon.setBounds(sOldBounds);
 
             return bitmap;
         }
+    }
+
+    /*
+     * Tweaks: icon shapes. The masks of AOSP's icon shape overlays (config_icon_mask,
+     * 100x100 viewport); circle is the AOSP default. 0 = the system's shape.
+     */
+    static final String[] ICON_SHAPE_MASKS = {
+        null,
+        "M50,0A50,50,0,1,1,50,100A50,50,0,1,1,50,0Z", // circle (default)
+        "M50,0 C10,0 0,10 0,50 0,90 10,100 50,100 90,100 100,90 100,50 100,10 90,0 50,0 Z",
+        "M50,0L88,0 C94.4,0 100,5.4 100 12 L100,88 C100,94.6 94.6 100 88 100 L12,100 "
+                + "C5.4,100 0,94.6 0,88 L0 12 C0 5.4 5.4 0 12 0 L50,0 Z", // rounded rect
+        "M50,0 C77.6,0 100,22.4 100,50 L100,88 C100,94.6 94.6,100 88,100 L50,100 "
+                + "C22.4 100 0 77.6 0 50C0 22.4 22.4 0 50 0 Z", // teardrop
+        "M50,0L100,0 100,100 0,100 0,0z", // square
+    };
+
+    /** Tweaks: like AdaptiveIconDrawable.draw(), with the chosen mask instead. */
+    private static void drawAdaptiveIcon(android.graphics.drawable.AdaptiveIconDrawable icon,
+            Canvas canvas, int left, int top, int width, int height) {
+        final Bitmap layers = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        final Canvas c = new Canvas(layers);
+        // The layers are 1.5x the icon (25% extra on each side), centered
+        final int ox = width / 4, oy = height / 4;
+        for (Drawable d : new Drawable[] { icon.getBackground(), icon.getForeground() }) {
+            if (d == null) continue;
+            d.setBounds(-ox, -oy, width + ox, height + oy);
+            d.draw(c);
+        }
+        final android.graphics.Path mask = parseMask(ICON_SHAPE_MASKS[Launcher.ICON_SHAPE]);
+        final android.graphics.Matrix m = new android.graphics.Matrix();
+        m.setScale(width / 100.f, height / 100.f);
+        mask.transform(m);
+        final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setXfermode(new android.graphics.PorterDuffXfermode(PorterDuff.Mode.DST_IN));
+        c.drawPath(mask, p);
+        canvas.drawBitmap(layers, left, top, null);
+        layers.recycle();
+    }
+
+    /** Tweaks: absolute M/L/C/A/Z path data, enough for the masks above. */
+    private static android.graphics.Path parseMask(String data) {
+        final android.graphics.Path path = new android.graphics.Path();
+        final java.util.regex.Matcher t = java.util.regex.Pattern
+                .compile("[MLCAZmlcaz]|-?[0-9]*\\.?[0-9]+").matcher(data);
+        final java.util.ArrayList<String> tokens = new java.util.ArrayList<String>();
+        while (t.find()) tokens.add(t.group());
+        char cmd = 'M';
+        float x = 0, y = 0;
+        for (int i = 0; i < tokens.size();) {
+            final String tok = tokens.get(i);
+            if (Character.isLetter(tok.charAt(0))) {
+                cmd = Character.toUpperCase(tok.charAt(0));
+                i++;
+                if (cmd == 'Z') {
+                    path.close();
+                    continue;
+                }
+            }
+            switch (cmd) {
+                case 'M':
+                    x = Float.parseFloat(tokens.get(i)); y = Float.parseFloat(tokens.get(i + 1));
+                    path.moveTo(x, y);
+                    i += 2;
+                    cmd = 'L'; // following pairs are line-tos
+                    break;
+                case 'L':
+                    x = Float.parseFloat(tokens.get(i)); y = Float.parseFloat(tokens.get(i + 1));
+                    path.lineTo(x, y);
+                    i += 2;
+                    break;
+                case 'C':
+                    final float x1 = Float.parseFloat(tokens.get(i));
+                    final float y1 = Float.parseFloat(tokens.get(i + 1));
+                    final float x2 = Float.parseFloat(tokens.get(i + 2));
+                    final float y2 = Float.parseFloat(tokens.get(i + 3));
+                    x = Float.parseFloat(tokens.get(i + 4)); y = Float.parseFloat(tokens.get(i + 5));
+                    path.cubicTo(x1, y1, x2, y2, x, y);
+                    i += 6;
+                    break;
+                case 'A': {
+                    // only the half circles of the circle mask: rx,ry,rot,large,sweep,x,y
+                    final float r = Float.parseFloat(tokens.get(i));
+                    final float nx = Float.parseFloat(tokens.get(i + 5));
+                    final float ny = Float.parseFloat(tokens.get(i + 6));
+                    final float cx = (x + nx) / 2, cy = (y + ny) / 2;
+                    final float start = (float) Math.toDegrees(Math.atan2(y - cy, x - cx));
+                    path.arcTo(new RectF(cx - r, cy - r, cx + r, cy + r), start, 180);
+                    x = nx; y = ny;
+                    i += 7;
+                    break;
+                }
+                default:
+                    i++;
+            }
+        }
+        return path;
     }
 
     static void drawSelectedAllAppsBitmap(Canvas dest, int destWidth, int destHeight,

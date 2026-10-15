@@ -296,6 +296,9 @@ public final class Launcher extends Activity
     // Tweaks: no black system bars, the wallpaper shows behind them
     static final String TWEAK_NO_BAR_BACKGROUNDS = "no_bar_backgrounds";
     static boolean NO_BAR_BACKGROUNDS = false;
+    // Tweaks: shape of adaptive icons, index into Utilities.ICON_SHAPE_MASKS (0 = system)
+    static final String TWEAK_ICON_SHAPE = "icon_shape";
+    static int ICON_SHAPE = 0;
     static final String TWEAK_HIDDEN_APPS = "hidden_apps"; // flattened ComponentNames
 
     // Tweaks
@@ -308,6 +311,8 @@ public final class Launcher extends Activity
         DEFAULT_SCREEN = (SCREEN_COUNT - 1) / 2; // the middle one, 2 of 5 as in stock
         SWIPE_DOWN_NOTIFICATIONS = prefs.getBoolean(TWEAK_SWIPE_DOWN_NOTIFICATIONS, false);
         NO_BAR_BACKGROUNDS = prefs.getBoolean(TWEAK_NO_BAR_BACKGROUNDS, false);
+        ICON_SHAPE = Math.max(0, Math.min(Utilities.ICON_SHAPE_MASKS.length - 1,
+                prefs.getInt(TWEAK_ICON_SHAPE, 0)));
         synchronized (sLock) {
             sScreen = Math.max(0, Math.min(sScreen, SCREEN_COUNT - 1));
         }
@@ -809,6 +814,12 @@ public final class Launcher extends Activity
         mPaused = false;
         if (Settings.sChanged) { // Tweaks: settings were changed
             Settings.sChanged = false;
+            if (Settings.sIconsChanged) { // icon shape: create all icons again
+                Settings.sIconsChanged = false;
+                loadTweaks(this);
+                ((LauncherApplication) getApplication()).getIconCache().flush();
+                mModel.forceReload();
+            }
             applyTweaks();
             return;
         }
@@ -2398,6 +2409,7 @@ public final class Launcher extends Activity
     // Changes are saved right away and applied when the launcher comes back.
     public static class Settings extends Activity {
         static boolean sChanged;
+        static boolean sIconsChanged;
         private static final String EXTRA_PAGE = "page";
 
         private android.content.SharedPreferences mPrefs;
@@ -2440,6 +2452,13 @@ public final class Launcher extends Activity
                         (TextView) hidden.findViewById(R.id.settings_item_summary);
                 updateHiddenSummary(hiddenSummary);
                 hidden.setOnClickListener(v -> showHiddenAppsDialog(hiddenSummary));
+            } else if (page == R.string.tweaks_category_icons) {
+                addCategory(R.string.tweaks_category_icons);
+                addChoice(R.string.tweaks_icon_shape, TWEAK_ICON_SHAPE, new int[] {
+                        R.string.tweaks_icon_shape_system, R.string.tweaks_icon_shape_circle,
+                        R.string.tweaks_icon_shape_squircle,
+                        R.string.tweaks_icon_shape_rounded_rect,
+                        R.string.tweaks_icon_shape_teardrop, R.string.tweaks_icon_shape_square });
             } else if (page == R.string.tweaks_dock) {
                 addCategory(R.string.tweaks_category_dock_apps);
                 for (int i = 0; i < DOCK_KEYS.length; i++) {
@@ -2449,6 +2468,7 @@ public final class Launcher extends Activity
                 addPage(R.string.tweaks_category_home, R.string.tweaks_home_summary);
                 addPage(R.string.tweaks_category_drawer, R.string.tweaks_drawer_summary);
                 addPage(R.string.tweaks_dock, R.string.tweaks_dock_summary);
+                addPage(R.string.tweaks_category_icons, R.string.tweaks_icons_summary);
                 addItem(R.string.tweaks_reset_title, getString(R.string.tweaks_reset_summary))
                         .setOnClickListener(v -> confirmReset());
             }
@@ -2503,6 +2523,28 @@ public final class Launcher extends Activity
             });
         }
 
+        // ListPreference style with named entries; the stored value is the index
+        private void addChoice(final int title, final String key, int[] entries) {
+            final String[] labels = new String[entries.length];
+            for (int i = 0; i < entries.length; i++) labels[i] = getString(entries[i]);
+            final int[] selected = { Math.max(0, Math.min(labels.length - 1,
+                    mPrefs.getInt(key, 0))) };
+            final View v = addItem(title, labels[selected[0]]);
+            final TextView summary = (TextView) v.findViewById(R.id.settings_item_summary);
+            v.setOnClickListener(view -> new AlertDialog.Builder(this)
+                    .setTitle(title)
+                    .setSingleChoiceItems(labels, selected[0], (dialog, which) -> {
+                        selected[0] = which;
+                        mPrefs.edit().putInt(key, which).apply();
+                        sChanged = true;
+                        sIconsChanged = true;
+                        setSummary(summary, labels[which]);
+                        dialog.dismiss();
+                    })
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show());
+        }
+
         // ListPreference style: the summary shows the value, a dialog picks a new one.
         // "Auto" (0) is the stock drawer layout.
         private void addNumber(final int title, final String key, int min, int max,
@@ -2549,6 +2591,7 @@ public final class Launcher extends Activity
                     .setPositiveButton(android.R.string.ok, (dialog, which) -> {
                         mPrefs.edit().clear().apply();
                         sChanged = true;
+                        sIconsChanged = true;
                         recreate();
                     })
                     .setNegativeButton(android.R.string.cancel, null)
