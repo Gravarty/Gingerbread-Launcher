@@ -40,6 +40,17 @@ public class LauncherAppWidgetHostView extends AppWidgetHostView {
         mInflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
     }
     
+    /**
+     * Port: since ICS the host view adds a default padding around every widget (8dp on
+     * phones). Gingerbread had none, its widgets bring their margins in their graphics, so
+     * the padding made them too small for their content.
+     */
+    @Override
+    public void setAppWidget(int appWidgetId, android.appwidget.AppWidgetProviderInfo info) {
+        super.setAppWidget(appWidgetId, info);
+        setPadding(0, 0, 0, 0);
+    }
+
     @Override
     protected View getErrorView() {
         return mInflater.inflate(R.layout.appwidget_error, this, false);
