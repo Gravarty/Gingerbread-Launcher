@@ -890,7 +890,9 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
             if (mTouchState == TOUCH_STATE_SCROLLING) {
                 // Scroll to follow the motion event
                 final int pointerIndex = ev.findPointerIndex(mActivePointerId);
-                final float x = ev.getX(pointerIndex);
+                // Tweaks: the feed moves the DragLayer with the finger; without its
+                // translation the finger would barely move relative to the workspace
+                final float x = ev.getX(pointerIndex) + mLauncher.getDragLayer().getTranslationX();
                 final float deltaX = mLastMotionX - x;
                 mLastMotionX = x;
 
