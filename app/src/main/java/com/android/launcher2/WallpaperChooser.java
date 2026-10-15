@@ -141,11 +141,37 @@ public class WallpaperChooser extends Activity implements AdapterView.OnItemSele
         mIsWallpaperSet = true;
         try {
             WallpaperManager wpm = (WallpaperManager)getSystemService(WALLPAPER_SERVICE);
-            wpm.setResource(mImages.get(position));
+            if (Launcher.SCREEN_COUNT == 1) {
+                setCenteredWallpaper(wpm, mImages.get(position));
+            } else {
+                wpm.setResource(mImages.get(position));
+            }
             setResult(RESULT_OK);
             finish();
         } catch (IOException e) {
             Log.e(TAG, "Failed to set wallpaper: " + e);
+        }
+    }
+
+    /**
+     * Tweaks: with a single home screen there's no scrolling over the (wide) wallpaper, so
+     * set its center part, the size of the screen. Without a crop the system shows the
+     * wallpaper from its left edge then.
+     */
+    private void setCenteredWallpaper(WallpaperManager wpm, int resId) throws IOException {
+        final android.graphics.BitmapFactory.Options o =
+                new android.graphics.BitmapFactory.Options();
+        o.inJustDecodeBounds = true;
+        o.inScaled = false; // file pixels, like openRawResource()
+        android.graphics.BitmapFactory.decodeResource(getResources(), resId, o);
+        final android.graphics.Rect screen =
+                getWindowManager().getMaximumWindowMetrics().getBounds();
+        final float aspect = (float) Math.min(screen.width(), screen.height())
+                / Math.max(screen.width(), screen.height()); // portrait
+        final int w = Math.min(o.outWidth, Math.round(o.outHeight * aspect));
+        final int left = (o.outWidth - w) / 2;
+        try (java.io.InputStream in = getResources().openRawResource(resId)) {
+            wpm.setStream(in, new android.graphics.Rect(left, 0, left + w, o.outHeight), true);
         }
     }
 
