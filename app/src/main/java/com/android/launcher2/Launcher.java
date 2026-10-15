@@ -307,6 +307,15 @@ public final class Launcher extends Activity
     static final String TWEAK_ICON_PACK_EVERYWHERE = "icon_pack_everywhere";
     static String ICON_PACK = null;
     static boolean ICON_PACK_EVERYWHERE = false;
+    // Tweaks: own colors for the icon pack's icons (default: clock hand green on dock grey)
+    static final String TWEAK_ICON_PACK_COLORS = "icon_pack_colors";
+    static final String TWEAK_ICON_PACK_FG = "icon_pack_fg";
+    static final String TWEAK_ICON_PACK_BG = "icon_pack_bg";
+    static final int DEFAULT_ICON_PACK_FG = 0xff99cc33;
+    static final int DEFAULT_ICON_PACK_BG = 0xff2a2a2a;
+    static boolean ICON_PACK_COLORS = false;
+    static int ICON_PACK_FG = DEFAULT_ICON_PACK_FG;
+    static int ICON_PACK_BG = DEFAULT_ICON_PACK_BG;
     static final String TWEAK_HIDDEN_APPS = "hidden_apps"; // flattened ComponentNames
 
     // Tweaks
@@ -324,6 +333,9 @@ public final class Launcher extends Activity
                 prefs.getInt(TWEAK_ICON_SHAPE, 0)));
         ICON_PACK = prefs.getString(TWEAK_ICON_PACK, null);
         ICON_PACK_EVERYWHERE = prefs.getInt(TWEAK_ICON_PACK_EVERYWHERE, 0) == 1;
+        ICON_PACK_COLORS = prefs.getInt(TWEAK_ICON_PACK_COLORS, 0) == 1;
+        ICON_PACK_FG = prefs.getInt(TWEAK_ICON_PACK_FG, DEFAULT_ICON_PACK_FG);
+        ICON_PACK_BG = prefs.getInt(TWEAK_ICON_PACK_BG, DEFAULT_ICON_PACK_BG);
         synchronized (sLock) {
             sScreen = Math.max(0, Math.min(sScreen, SCREEN_COUNT - 1));
         }
@@ -2498,6 +2510,13 @@ public final class Launcher extends Activity
                 addChoice(R.string.tweaks_icon_pack_where, TWEAK_ICON_PACK_EVERYWHERE,
                         new int[] { R.string.tweaks_icon_pack_home,
                                 R.string.tweaks_icon_pack_everywhere });
+                addChoice(R.string.tweaks_icon_pack_colors, TWEAK_ICON_PACK_COLORS,
+                        new int[] { R.string.tweaks_icon_shape_system,
+                                R.string.tweaks_icon_pack_colors_own });
+                addColor(R.string.tweaks_icon_pack_fg, TWEAK_ICON_PACK_FG,
+                        DEFAULT_ICON_PACK_FG);
+                addColor(R.string.tweaks_icon_pack_bg, TWEAK_ICON_PACK_BG,
+                        DEFAULT_ICON_PACK_BG);
             } else if (page == R.string.tweaks_dock) {
                 addCategory(R.string.tweaks_category_dock_apps);
                 for (int i = 0; i < DOCK_KEYS.length; i++) {
@@ -2563,6 +2582,80 @@ public final class Launcher extends Activity
                     sIconsChanged = true; // the drawer labels are drawn with the font
                 }
             });
+        }
+
+        // Color: suggestions from the Gingerbread graphics, or an own HEX value
+        private static final int[] COLOR_VALUES = { 0xff99cc33, 0xff8fbc46, 0xffffb819,
+                0xff2a2a2a, 0xffffffff, 0xff000000 };
+        private static final int[] COLOR_NAMES = { R.string.tweaks_color_clock_green,
+                R.string.tweaks_color_dock_green, R.string.tweaks_color_orange,
+                R.string.tweaks_color_dock_grey, R.string.tweaks_color_white,
+                R.string.tweaks_color_black };
+
+        private static String hex(int color) {
+            return String.format("#%06X", color & 0xffffff);
+        }
+
+        private void addColor(final int title, final String key, int def) {
+            final int[] color = { mPrefs.getInt(key, def) };
+            final View v = addItem(title, hex(color[0]));
+            final TextView summary = (TextView) v.findViewById(R.id.settings_item_summary);
+            final CharSequence[] labels = new CharSequence[COLOR_VALUES.length + 1];
+            for (int i = 0; i < COLOR_VALUES.length; i++) {
+                labels[i] = getString(COLOR_NAMES[i]) + " (" + hex(COLOR_VALUES[i]) + ")";
+            }
+            labels[COLOR_VALUES.length] = getString(R.string.tweaks_color_custom);
+            final java.util.function.IntConsumer set = c -> {
+                color[0] = c;
+                mPrefs.edit().putInt(key, c).apply();
+                sChanged = true;
+                sIconsChanged = true;
+                setSummary(summary, hex(c));
+            };
+            v.setOnClickListener(view -> {
+                int checked = -1;
+                for (int i = 0; i < COLOR_VALUES.length; i++) {
+                    if (COLOR_VALUES[i] == color[0]) checked = i;
+                }
+                new AlertDialog.Builder(this)
+                        .setTitle(title)
+                        .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                            dialog.dismiss();
+                            if (which < COLOR_VALUES.length) {
+                                set.accept(COLOR_VALUES[which]);
+                            } else {
+                                askHexColor(title, color[0], set);
+                            }
+                        })
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show();
+            });
+        }
+
+        private void askHexColor(int title, int current, java.util.function.IntConsumer set) {
+            final android.widget.EditText input = new android.widget.EditText(this);
+            input.setSingleLine(true);
+            input.setText(hex(current));
+            input.setSelection(input.getText().length());
+            final int pad = (int) (16 * getResources().getDisplayMetrics().density);
+            final android.widget.FrameLayout frame = new android.widget.FrameLayout(this);
+            frame.setPadding(pad, pad / 2, pad, 0);
+            frame.addView(input);
+            new AlertDialog.Builder(this)
+                    .setTitle(title)
+                    .setView(frame)
+                    .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                        String s = input.getText().toString().trim();
+                        if (!s.startsWith("#")) s = "#" + s;
+                        try {
+                            set.accept(android.graphics.Color.parseColor(s) | 0xff000000);
+                        } catch (IllegalArgumentException e) {
+                            android.widget.Toast.makeText(this, R.string.tweaks_color_invalid,
+                                    android.widget.Toast.LENGTH_SHORT).show();
+                        }
+                    })
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show();
         }
 
         // Icon packs: the apps that offer one (ADW/Nova/GO format)

@@ -149,10 +149,35 @@ public class IconCache {
             entry.packIcon = entry.icon;
             final Drawable d = loadPackDrawable(component);
             if (d != null) {
-                entry.packIcon = Utilities.createIconBitmap(d, mContext);
+                entry.packIcon = Utilities.createIconBitmap(
+                        Launcher.ICON_PACK_COLORS ? recolor(d) : d, mContext);
             }
         }
         return entry.packIcon;
+    }
+
+    /**
+     * Tweaks: own colors for the pack's icons: the background gets the background color,
+     * the motif (the monochrome layer if there is one, else the foreground or the whole
+     * icon) is filled with the icon color.
+     */
+    private static Drawable recolor(Drawable d) {
+        Drawable motif;
+        if (d instanceof android.graphics.drawable.AdaptiveIconDrawable) {
+            final android.graphics.drawable.AdaptiveIconDrawable a =
+                    (android.graphics.drawable.AdaptiveIconDrawable) d;
+            motif = android.os.Build.VERSION.SDK_INT >= 33 ? a.getMonochrome() : null;
+            if (motif == null) motif = a.getForeground();
+            if (motif == null) return d;
+            motif = motif.mutate();
+        } else {
+            // a plain icon: centered in the adaptive layers' visible area
+            motif = new android.graphics.drawable.InsetDrawable(d.mutate(), 0.25f);
+        }
+        motif.setColorFilter(new android.graphics.PorterDuffColorFilter(
+                Launcher.ICON_PACK_FG, android.graphics.PorterDuff.Mode.SRC_IN));
+        return new android.graphics.drawable.AdaptiveIconDrawable(
+                new android.graphics.drawable.ColorDrawable(Launcher.ICON_PACK_BG), motif);
     }
 
     private Drawable loadPackDrawable(ComponentName component) {
