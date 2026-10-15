@@ -1905,6 +1905,7 @@ public class AllApps3D extends GLSurfaceView
                 initMesh();
                 homeTextures = null;
                 selectionTexture = 0;
+                mPendingDeletes.clear(); // ids of the old context
                 for (int i = 0; i < iconTextures.size(); i++) {
                     iconTextures.set(i, upload(iconBitmaps.get(i), true));
                     labelTextures.set(i, upload(labelBitmaps.get(i), true));
@@ -1932,6 +1933,7 @@ public class AllApps3D extends GLSurfaceView
                 if (l == null || !mContextReady) {
                     return;
                 }
+                syncTextures();
                 if (homeTextures == null && homeButtons != null) {
                     homeTextures = new int[3];
                     for (int i = 0; i < 3; i++) {
@@ -2099,6 +2101,16 @@ public class AllApps3D extends GLSurfaceView
                 GLES20.glDisableVertexAttribArray(tex);
             }
 
+            /*
+             * Port: these run as queued events, and GLSurfaceView also runs queued events
+             * while the surface is gone. The context is preserved then, but not current:
+             * GL calls do nothing and every texture would stay 0 (white label boxes, no
+             * icons) until the context is lost. So the queued events only change the lists
+             * and remember what to delete; onDrawFrame() (context always current) uploads
+             * the missing textures and deletes the old ones.
+             */
+            private final ArrayList<Integer> mPendingDeletes = new ArrayList<Integer>();
+
             void setApps(Bitmap[] icons, Bitmap[] labels) {
                 deleteTextures(iconTextures);
                 deleteTextures(labelTextures);
@@ -2107,45 +2119,66 @@ public class AllApps3D extends GLSurfaceView
                 for (int i = 0; i < icons.length; i++) {
                     iconBitmaps.add(icons[i]);
                     labelBitmaps.add(labels[i]);
-                    iconTextures.add(mContextReady ? upload(icons[i], true) : 0);
-                    labelTextures.add(mContextReady ? upload(labels[i], true) : 0);
+                    iconTextures.add(0);
+                    labelTextures.add(0);
                 }
+                requestRender();
             }
 
             void addApp(int index, Bitmap icon, Bitmap label) {
                 iconBitmaps.add(index, icon);
                 labelBitmaps.add(index, label);
-                iconTextures.add(index, mContextReady ? upload(icon, true) : 0);
-                labelTextures.add(index, mContextReady ? upload(label, true) : 0);
+                iconTextures.add(index, 0);
+                labelTextures.add(index, 0);
+                requestRender();
             }
 
             void removeApp(int index) {
-                final int[] ids = new int[] { iconTextures.remove(index),
-                        labelTextures.remove(index) };
+                deleteLater(iconTextures.remove(index));
+                deleteLater(labelTextures.remove(index));
                 iconBitmaps.remove(index);
                 labelBitmaps.remove(index);
-                if (mContextReady) {
-                    GLES20.glDeleteTextures(2, ids, 0);
-                }
             }
 
             void setSelectionBitmap(Bitmap b) {
-                if (mContextReady && selectionTexture != 0) {
-                    GLES20.glDeleteTextures(1, new int[] { selectionTexture }, 0);
-                }
+                deleteLater(selectionTexture);
                 selectionBitmap = b;
-                selectionTexture = mContextReady ? upload(b, false) : 0;
+                selectionTexture = 0;
+                requestRender();
             }
 
             private void deleteTextures(ArrayList<Integer> textures) {
-                if (mContextReady && textures.size() > 0) {
-                    final int[] ids = new int[textures.size()];
-                    for (int i = 0; i < ids.length; i++) {
-                        ids[i] = textures.get(i);
-                    }
-                    GLES20.glDeleteTextures(ids.length, ids, 0);
+                for (int i = 0; i < textures.size(); i++) {
+                    deleteLater(textures.get(i));
                 }
                 textures.clear();
+            }
+
+            private void deleteLater(int id) {
+                if (id != 0) mPendingDeletes.add(id);
+            }
+
+            /** GL thread, context current: apply the queued texture changes. */
+            private void syncTextures() {
+                if (!mPendingDeletes.isEmpty()) {
+                    final int[] ids = new int[mPendingDeletes.size()];
+                    for (int i = 0; i < ids.length; i++) {
+                        ids[i] = mPendingDeletes.get(i);
+                    }
+                    GLES20.glDeleteTextures(ids.length, ids, 0);
+                    mPendingDeletes.clear();
+                }
+                for (int i = 0; i < iconTextures.size(); i++) {
+                    if (iconTextures.get(i) == 0) {
+                        iconTextures.set(i, upload(iconBitmaps.get(i), true));
+                    }
+                    if (labelTextures.get(i) == 0) {
+                        labelTextures.set(i, upload(labelBitmaps.get(i), true));
+                    }
+                }
+                if (selectionTexture == 0 && selectionBitmap != null) {
+                    selectionTexture = upload(selectionBitmap, false);
+                }
             }
 
             /**
