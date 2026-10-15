@@ -44,6 +44,9 @@
 
     <!-- Modern Android: package visibility (API 30+). A home app has to see all launchable apps. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <!-- Port: the clock widget opens the alarms (ACTION_SHOW_ALARMS); some clock apps
+         (e.g. Samsung's) require this permission for it -->
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
     <uses-feature android:name="android.software.live_wallpaper" android:required="false" />
