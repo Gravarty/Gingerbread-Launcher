@@ -505,7 +505,12 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         computeScroll();
-        mDragController.setWindowToken(getWindowToken());
+        // Port: when the activity is relaunched (recreate(), config changes), the window
+        // is kept and the view is attached during setContentView(), before
+        // Launcher.setupViews() has set the drag controller.
+        if (mDragController != null) {
+            mDragController.setWindowToken(getWindowToken());
+        }
     }
 
     @Override
@@ -1212,6 +1217,10 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
 
     public void setDragController(DragController dragController) {
         mDragController = dragController;
+        // Port: see onAttachedToWindow()
+        if (getWindowToken() != null) {
+            mDragController.setWindowToken(getWindowToken());
+        }
     }
 
     public void onDropCompleted(View target, boolean success) {
