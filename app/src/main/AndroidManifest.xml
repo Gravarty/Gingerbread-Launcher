@@ -163,6 +163,18 @@
             <meta-data android:name="android.service.wallpaper" android:resource="@xml/nexus" />
         </service>
 
+        <!-- Port: the Nexus S variant of it (device/samsung/crespo overlay). -->
+        <service
+            android:label="@string/wallpaper_nexus_s"
+            android:name="com.android.wallpaper.nexus.NexusSWallpaper"
+            android:permission="android.permission.BIND_WALLPAPER"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.wallpaper.WallpaperService" />
+            </intent-filter>
+            <meta-data android:name="android.service.wallpaper" android:resource="@xml/nexus_s" />
+        </service>
+
         <!-- The settings provider contains Home's data, like the workspace favorites -->
         <provider
             android:name="com.android.launcher2.LauncherProvider"
