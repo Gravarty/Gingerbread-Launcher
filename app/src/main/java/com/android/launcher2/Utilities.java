@@ -50,6 +50,8 @@ final class Utilities {
     private static final boolean TEXT_BURN = false;
 
     private static int sIconWidth = -1;
+    private static float sIconScale = 1f;
+    private static IconNormalizer sNormalizer;
     private static int sIconHeight = -1;
     private static int sIconTextureWidth = -1;
     private static int sIconTextureHeight = -1;
@@ -131,9 +133,14 @@ final class Utilities {
                         width = (int) (height * ratio);
                     }
                 } else if (sourceWidth < width && sourceHeight < height) {
-                    // It's small, use the size they gave us.
-                    width = sourceWidth;
-                    height = sourceHeight;
+                    // Port: scaled up to the (display dependent) icon size like Launcher3,
+                    // keeping the proportions. Was: "It's small, use the size they gave us."
+                    final float ratio = (float) sourceWidth / sourceHeight;
+                    if (sourceWidth > sourceHeight) {
+                        height = (int) (width / ratio);
+                    } else if (sourceHeight > sourceWidth) {
+                        width = (int) (height * ratio);
+                    }
                 }
             }
 
@@ -159,12 +166,77 @@ final class Utilities {
             }
 
             sOldBounds.set(icon.getBounds());
-            icon.setBounds(left, top, left+width, top+height);
+            // Port: normalized like Launcher3's BaseIconFactory.drawIconBitmap()
+            final float scale = sNormalizer.getScale(icon);
+            final int count = canvas.save();
+            if (icon instanceof android.graphics.drawable.AdaptiveIconDrawable) {
+                final int offset = Math.max(
+                        (int) Math.ceil(IconNormalizer.BLUR_FACTOR * width),
+                        Math.round(width * (1 - scale) / 2));
+                // AdaptiveIconDrawable doesn't work properly for non top-left bounds
+                icon.setBounds(0, 0, width - offset - offset, height - offset - offset);
+                canvas.translate(left + offset, top + offset);
+            } else {
+                icon.setBounds(left, top, left+width, top+height);
+                canvas.scale(scale, scale, left + width / 2f, top + height / 2f);
+            }
             icon.draw(canvas);
+            canvas.restoreToCount(count);
             icon.setBounds(sOldBounds);
 
             return bitmap;
         }
+    }
+
+    /**
+     * Port: Launcher3's icon size for this display (InvariantDeviceProfile): inverse distance
+     * weighted between the nearest phone profiles of its device_profiles.xml.
+     * Gingerbread used 48dp everywhere, sized for the phones of its time.
+     */
+    private static final float[][] ICON_PROFILES = {
+        // minWidthDps, minHeightDps, iconImageSize
+        { 255, 300, 48 }, { 255, 400, 48 }, { 275, 420, 48 }, { 255, 450, 48 },
+        { 296, 491.33f, 48 },   // Nexus S
+        { 359, 567, 54 },       // Nexus 4
+        { 335, 567, 54 },       // Nexus 5
+        { 406, 694, 56 },       // Large Phone
+    };
+
+    static float iconSizeDp(Context context) {
+        final DisplayMetrics dm = context.getResources().getDisplayMetrics();
+        final android.graphics.Rect b = ((android.view.WindowManager) context.getSystemService(
+                Context.WINDOW_SERVICE)).getMaximumWindowMetrics().getBounds();
+        final float w = Math.min(b.width(), b.height()) / dm.density;
+        final float h = Math.max(b.width(), b.height()) / dm.density;
+        // KNEARESTNEIGHBOR = 3, WEIGHT_POWER = 5
+        final float[][] p = ICON_PROFILES.clone();
+        java.util.Arrays.sort(p, (a, c) -> Float.compare(
+                (float) Math.hypot(w - a[0], h - a[1]), (float) Math.hypot(w - c[0], h - c[1])));
+        float weights = 0, size = 0;
+        for (int i = 0; i < 3; i++) {
+            final float d = (float) Math.hypot(w - p[i][0], h - p[i][1]);
+            if (d == 0) return p[i][2];
+            final float wt = (float) (100000f / Math.pow(d, 5));
+            weights += wt;
+            size += wt * p[i][2];
+        }
+        return size / weights;
+    }
+
+    /** Port: size of the icon bitmaps (with their 1px border), see initStatics(). */
+    static int iconTextureSize(Context context) {
+        iconScale(context);
+        return sIconTextureHeight;
+    }
+
+    /** Port: icon size relative to Gingerbread's 48dp. */
+    static float iconScale(Context context) {
+        if (sIconWidth == -1) {
+            synchronized (sCanvas) {
+                if (sIconWidth == -1) initStatics(context);
+            }
+        }
+        return sIconScale;
     }
 
     static void drawSelectedAllAppsBitmap(Canvas dest, int destWidth, int destHeight,
@@ -237,8 +309,12 @@ final class Utilities {
         final DisplayMetrics metrics = resources.getDisplayMetrics();
         final float density = metrics.density;
 
-        sIconWidth = sIconHeight = (int) resources.getDimension(android.R.dimen.app_icon_size);
-        sIconTextureWidth = sIconTextureHeight = sIconWidth + 2;
+        // Port: icon size for the display, like Launcher3 (48dp on Gingerbread's phones)
+        sIconScale = iconSizeDp(context) / 48f;
+        sIconWidth = sIconHeight = Math.round(
+                resources.getDimension(android.R.dimen.app_icon_size) * sIconScale);
+        sIconTextureWidth = sIconTextureHeight = sIconWidth + Math.round(2 * sIconScale);
+        sNormalizer = new IconNormalizer(sIconWidth);
 
         sBlurPaint.setMaskFilter(new BlurMaskFilter(5 * density, BlurMaskFilter.Blur.NORMAL));
         sGlowColorPressedPaint.setColor(0xffffc300);

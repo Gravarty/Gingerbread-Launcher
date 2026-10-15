@@ -39,8 +39,17 @@ class FastBitmapDrawable extends Drawable {
 
     @Override
     public void draw(Canvas canvas) {
+        final android.graphics.Rect b = getBounds();
+        if (b.width() != mWidth || b.height() != mHeight) {
+            // Port: drawn scaled into its bounds (icon size, see BubbleTextView)
+            canvas.drawBitmap(mBitmap, null, b, sScaledPaint);
+            return;
+        }
         canvas.drawBitmap(mBitmap, 0.0f, 0.0f, null);
     }
+
+    private static final android.graphics.Paint sScaledPaint =
+            new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG);
 
     @Override
     public int getOpacity() {
