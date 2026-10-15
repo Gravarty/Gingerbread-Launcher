@@ -1056,7 +1056,9 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
         SavedState savedState = (SavedState) state;
         super.onRestoreInstanceState(savedState.getSuperState());
         if (savedState.currentScreen != -1) {
-            mCurrentScreen = savedState.currentScreen;
+            // Tweaks: the screen count may have been lowered since the state was saved
+            mCurrentScreen = Math.max(0, Math.min(savedState.currentScreen,
+                    getChildCount() - 1));
             Launcher.setScreen(mCurrentScreen);
         }
     }
