@@ -204,8 +204,11 @@ final class Utilities {
         final android.graphics.Matrix m = new android.graphics.Matrix();
         m.setScale(width / 100.f, height / 100.f);
         mask.transform(m);
+        // Clear everything outside the mask (a DST_IN draw would only touch the pixels
+        // inside the path and leave the corners as they are)
+        mask.setFillType(android.graphics.Path.FillType.INVERSE_WINDING);
         final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        p.setXfermode(new android.graphics.PorterDuffXfermode(PorterDuff.Mode.DST_IN));
+        p.setXfermode(new android.graphics.PorterDuffXfermode(PorterDuff.Mode.CLEAR));
         c.drawPath(mask, p);
         canvas.drawBitmap(layers, left, top, null);
         layers.recycle();
