@@ -1778,6 +1778,11 @@ public class AllApps3D extends GLSurfaceView
                     } else {
                         g_Zoom += dz;
                     }
+                    // Port: the clear color set now is used by the next frame, so make
+                    // sure there is one. With animations off the zoom reaches its target
+                    // in a single frame and rendering would stop before the background
+                    // (open: no dim) or the transparent clear (close: black screen) shows.
+                    g_DrawLastFrame = 1;
                     updateReadback();
                 }
                 g_Animation = (float) Math.pow(1-g_Zoom, 3);
