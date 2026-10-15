@@ -19,4 +19,10 @@
     <string name="genie_save">"Speichern"</string>
     <string name="genie_missing">"Bitte API-Schlüssel und Standort eingeben."</string>
     <string name="genie_invalid_key">"Ungültiger API-Schlüssel."</string>
+    <string name="genie_refresh_interval">"Aktualisierungsintervall"</string>
+    <string name="genie_minutes">"%d Min."</string>
+    <plurals name="genie_hours">
+        <item quantity="one">"%d Stunde"</item>
+        <item quantity="other">"%d Stunden"</item>
+    </plurals>
 </resources>

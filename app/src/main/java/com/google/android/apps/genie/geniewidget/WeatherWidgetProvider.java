@@ -40,8 +40,25 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
 
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
-        refresh(context, ids, goAsync());
+        // Android updates every 30 min (updatePeriodMillis); longer intervals skip updates
+        final SharedPreferences prefs = context.getSharedPreferences(PREFS, 0);
+        final long now = System.currentTimeMillis();
+        final java.util.ArrayList<Integer> due = new java.util.ArrayList<Integer>();
+        for (int id : ids) {
+            final long interval = prefs.getInt(key(id, "interval"), DEFAULT_INTERVAL) * 60000L;
+            // 5 min tolerance, the 30 min updates aren't exact
+            if (now - prefs.getLong(key(id, "updated"), 0) >= interval - 5 * 60000L) {
+                due.add(id);
+            }
+        }
+        final int[] dueIds = new int[due.size()];
+        for (int i = 0; i < dueIds.length; i++) dueIds[i] = due.get(i);
+        refresh(context, dueIds, goAsync());
     }
+
+    /** Refresh intervals (original: "Refresh interval"), in minutes; 30 is the default. */
+    static final int[] INTERVALS = { 30, 60, 120 };
+    static final int DEFAULT_INTERVAL = 30;
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -235,6 +252,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                 .putInt(key(id, "low"), low)
                 .putString(key(id, "condition"), condition)
                 .putString(key(id, "icon"), icon(w.optInt("id", 0), night))
+                .putLong(key(id, "updated"), System.currentTimeMillis())
                 .apply();
     }
 

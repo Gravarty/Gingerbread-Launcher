@@ -46,6 +46,8 @@ public class WeatherWidgetConfigure extends Activity {
     private String mApiKey;
     private String mLocation;
     private String mApp;
+    private int mInterval;
+    private TextView mIntervalSummary;
     private TextView mKeySummary, mLocationSummary, mAppSummary;
 
     @Override
@@ -66,6 +68,7 @@ public class WeatherWidgetConfigure extends Activity {
         mApiKey = mPrefs.getString(k + "apikey", mPrefs.getString("last_apikey", ""));
         mLocation = mPrefs.getString(k + "query", "");
         mApp = mPrefs.getString(k + "app", null);
+        mInterval = mPrefs.getInt(k + "interval", WeatherWidgetProvider.DEFAULT_INTERVAL);
 
         setContentView(R.layout.settings);
         ((TextView) findViewById(R.id.settings_title)).setText(R.string.genie_widget_weather);
@@ -84,6 +87,7 @@ public class WeatherWidgetConfigure extends Activity {
                     mLocation = s;
                     updateSummaries();
                 }));
+        mIntervalSummary = addItem(R.string.genie_refresh_interval, v -> chooseInterval());
         addCategory(R.string.genie_category_app);
         mAppSummary = addItem(R.string.genie_weather_app, v -> chooseApp());
         updateSummaries();
@@ -117,6 +121,7 @@ public class WeatherWidgetConfigure extends Activity {
             }
         }
         setSummary(mAppSummary, app);
+        setSummary(mIntervalSummary, intervalLabel(mInterval));
     }
 
     private static void setSummary(TextView view, CharSequence s) {
@@ -166,6 +171,31 @@ public class WeatherWidgetConfigure extends Activity {
                 .setView(frame)
                 .setPositiveButton(android.R.string.ok,
                         (d, w) -> r.set(input.getText().toString().trim()))
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private String intervalLabel(int minutes) {
+        return minutes < 60 ? getString(R.string.genie_minutes, minutes)
+                : getResources().getQuantityString(R.plurals.genie_hours, minutes / 60,
+                        minutes / 60);
+    }
+
+    private void chooseInterval() {
+        final int[] values = WeatherWidgetProvider.INTERVALS;
+        final CharSequence[] labels = new CharSequence[values.length];
+        int checked = 0;
+        for (int i = 0; i < values.length; i++) {
+            labels[i] = intervalLabel(values[i]);
+            if (values[i] == mInterval) checked = i;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.genie_refresh_interval)
+                .setSingleChoiceItems(labels, checked, (d, which) -> {
+                    mInterval = values[which];
+                    updateSummaries();
+                    d.dismiss();
+                })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
     }
@@ -268,6 +298,7 @@ public class WeatherWidgetConfigure extends Activity {
                         .putString(k + "name", placeName)
                         .putFloat(k + "lat", (float) la)
                         .putFloat(k + "lon", (float) lo)
+                        .putInt(k + "interval", mInterval)
                         .remove(k + "temp"); // new location: show loading
                 if (mApp != null) e.putString(k + "app", mApp); else e.remove(k + "app");
                 e.apply();
