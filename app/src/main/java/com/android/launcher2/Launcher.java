@@ -44,6 +44,7 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Parcelable;
@@ -165,11 +166,14 @@ public final class Launcher extends Activity
     private final BroadcastReceiver mCloseSystemDialogsReceiver
             = new CloseSystemDialogsIntentReceiver();
     private final ContentObserver mWidgetObserver = new AppWidgetResetObserver();
-    private final OnBackInvokedCallback mBackCallback = new OnBackInvokedCallback() {
-        public void onBackInvoked() {
-            onBackPressed();
-        }
-    };
+    // Typed as Object so the class still loads below API 33.
+    private final Object mBackCallback = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+            ? new OnBackInvokedCallback() {
+                public void onBackInvoked() {
+                    onBackPressed();
+                }
+            }
+            : null;
 
     private LayoutInflater mInflater;
 
@@ -268,8 +272,10 @@ public final class Launcher extends Activity
 
         // Android 13+ predictive back: KEYCODE_BACK/onBackPressed() are no longer delivered
         // when targeting API 36+, so route the back gesture to the original handler.
-        getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
-                OnBackInvokedDispatcher.PRIORITY_DEFAULT, mBackCallback);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_DEFAULT, (OnBackInvokedCallback) mBackCallback);
+        }
     }
 
     private void checkForLocaleChange() {
@@ -1085,7 +1091,10 @@ public final class Launcher extends Activity
         dismissPreview(mNextView);
 
         unregisterReceiver(mCloseSystemDialogsReceiver);
-        getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(mBackCallback);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(
+                    (OnBackInvokedCallback) mBackCallback);
+        }
     }
 
     @Override
