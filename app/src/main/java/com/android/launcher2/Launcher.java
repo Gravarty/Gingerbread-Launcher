@@ -640,6 +640,7 @@ public final class Launcher extends Activity
     protected void onPause() {
         super.onPause();
         mPaused = true;
+        getDragLayer().clearAllResizeFrames(); // Tweaks
         if (mAllAppsGrid instanceof android.opengl.GLSurfaceView) {
             ((android.opengl.GLSurfaceView) mAllAppsGrid).onPause();
         }
@@ -1980,6 +1981,7 @@ public final class Launcher extends Activity
     }
 
     void showAllApps(boolean animated) {
+        getDragLayer().clearAllResizeFrames(); // Tweaks
         mAllAppsGrid.zoom(1.0f, animated);
 
         ((View) mAllAppsGrid).setFocusable(true);
@@ -2161,6 +2163,21 @@ public final class Launcher extends Activity
         public void onShow(DialogInterface dialog) {
             mWaitingForResult = true;            
         }
+    }
+
+    // Tweaks: widget resizing (from ICS)
+    int[] getMinResizeSpanForWidget(AppWidgetProviderInfo info, int[] spanXY) {
+        Rect padding = android.appwidget.AppWidgetHostView.getDefaultPaddingForWidget(this,
+                info.provider, null);
+        int requiredWidth = info.minResizeWidth + padding.left + padding.right;
+        int requiredHeight = info.minResizeHeight + padding.top + padding.bottom;
+        CellLayout layout = (CellLayout) mWorkspace.getChildAt(mWorkspace.getCurrentScreen());
+        return layout.rectToCell(requiredWidth, requiredHeight);
+    }
+
+    // Tweaks
+    DragLayer getDragLayer() {
+        return (DragLayer) findViewById(R.id.drag_layer);
     }
 
     // Tweaks: grid settings dialog

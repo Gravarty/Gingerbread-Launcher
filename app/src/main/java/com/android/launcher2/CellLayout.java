@@ -463,6 +463,77 @@ public class CellLayout extends ViewGroup {
         return mCellHeight;
     }
 
+    // Tweaks: widget resizing (from ICS Launcher2), used by AppWidgetResizeFrame
+    int getWidthGap() {
+        return mWidthGap;
+    }
+
+    int getHeightGap() {
+        return mHeightGap;
+    }
+
+    /**
+     * Given a view, determines how much that view can be expanded in all directions, in terms of
+     * whether or not there are other items occupying adjacent cells. Used by the
+     * AppWidgetResizeFrame to determine how the widget can be resized.
+     */
+    public void getExpandabilityArrayForView(View view, int[] expandability) {
+        final LayoutParams lp = (LayoutParams) view.getLayoutParams();
+        final int countX = getCountX();
+        final int countY = getCountY();
+        // Gingerbread keeps no live occupancy map; compute it without this view.
+        final boolean[][] occupied = new boolean[countX][countY];
+        findOccupiedCells(countX, countY, occupied, view);
+        boolean flag;
+
+        expandability[AppWidgetResizeFrame.LEFT] = 0;
+        for (int x = lp.cellX - 1; x >= 0; x--) {
+            flag = false;
+            for (int y = lp.cellY; y < lp.cellY + lp.cellVSpan && y < countY; y++) {
+                if (occupied[x][y]) flag = true;
+            }
+            if (flag) break;
+            expandability[AppWidgetResizeFrame.LEFT]++;
+        }
+
+        expandability[AppWidgetResizeFrame.TOP] = 0;
+        for (int y = lp.cellY - 1; y >= 0; y--) {
+            flag = false;
+            for (int x = lp.cellX; x < lp.cellX + lp.cellHSpan && x < countX; x++) {
+                if (occupied[x][y]) flag = true;
+            }
+            if (flag) break;
+            expandability[AppWidgetResizeFrame.TOP]++;
+        }
+
+        expandability[AppWidgetResizeFrame.RIGHT] = 0;
+        for (int x = lp.cellX + lp.cellHSpan; x < countX; x++) {
+            flag = false;
+            for (int y = lp.cellY; y < lp.cellY + lp.cellVSpan && y < countY; y++) {
+                if (occupied[x][y]) flag = true;
+            }
+            if (flag) break;
+            expandability[AppWidgetResizeFrame.RIGHT]++;
+        }
+
+        expandability[AppWidgetResizeFrame.BOTTOM] = 0;
+        for (int y = lp.cellY + lp.cellVSpan; y < countY; y++) {
+            flag = false;
+            for (int x = lp.cellX; x < lp.cellX + lp.cellHSpan && x < countX; x++) {
+                if (occupied[x][y]) flag = true;
+            }
+            if (flag) break;
+            expandability[AppWidgetResizeFrame.BOTTOM]++;
+        }
+    }
+
+    // Tweaks: occupancy is computed from the children when needed, nothing to mark.
+    public void markCellsAsOccupiedForView(View view) {
+    }
+
+    public void markCellsAsUnoccupiedForView(View view) {
+    }
+
     int getLeftPadding() {
         return mPortrait ? mShortAxisStartPadding : mLongAxisStartPadding;
     }

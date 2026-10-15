@@ -1075,6 +1075,24 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
                 CellLayout.LayoutParams lp = (CellLayout.LayoutParams) cell.getLayoutParams();
                 LauncherModel.moveItemInDatabase(mLauncher, info,
                         LauncherSettings.Favorites.CONTAINER_DESKTOP, index, lp.cellX, lp.cellY);
+
+                // Tweaks (from ICS): show the resize frame on a dropped resizable widget
+                if (cell instanceof LauncherAppWidgetHostView) {
+                    final LauncherAppWidgetHostView hostView = (LauncherAppWidgetHostView) cell;
+                    final android.appwidget.AppWidgetProviderInfo pinfo =
+                            hostView.getAppWidgetInfo();
+                    if (pinfo != null && pinfo.resizeMode
+                            != android.appwidget.AppWidgetProviderInfo.RESIZE_NONE) {
+                        // We post this call so that the widget has a chance to be placed
+                        // in its final location
+                        post(new Runnable() {
+                            public void run() {
+                                mLauncher.getDragLayer().addResizeFrame(info, hostView,
+                                        cellLayout);
+                            }
+                        });
+                    }
+                }
             }
         }
     }
