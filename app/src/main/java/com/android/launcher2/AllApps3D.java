@@ -26,9 +26,9 @@
  *  - All layout constants are in pixels of the original 480px wide hdpi screen. They are
  *    kept and drawn in a "virtual" coordinate space at the original physical size
  *    (1 virtual px = 1 hdpi px), inside the area not covered by system bars.
- *  - Only the parts that depended on the Nexus One screen are generalised: columns and
- *    rows follow the screen size (4x4 at the original 480x762, 6x3 in landscape), the
- *    grid is centered, the bottom bend sits at the same distance from the edge, and
+ *  - Only the parts that depended on the Nexus One screen are generalised: the 4 (6 in
+ *    landscape) columns are spread over the width, rows follow the screen height (4 at
+ *    the original 480x762), the bottom bend sits at the same distance from the edge, and
  *    touch drag is normalised to the original screen height so scrolling still follows
  *    the finger. Texture magnification is linear since textures are no longer drawn 1:1.
  */
@@ -187,6 +187,7 @@ public class AllApps3D extends GLSurfaceView
         final float contentW, contentH; // virtual size of the content area (home button)
         final int surfaceHeight;    // view px
         final int cols, rows;
+        final float colWidth;       // virtual px, 120 on the original screen
         final float rowHeight;
         final float bendY1, bendY2;
         final float yoff;           // drawFrontGrid() row 0 position
@@ -203,35 +204,32 @@ public class AllApps3D extends GLSurfaceView
             final int ch = content.height();
             portrait = cw < ch;
 
-            // One virtual px is one px at the Nexus One's hdpi density (1.5), so icons,
-            // labels and spacing keep their original physical size.
+            // One virtual px is one px at the Nexus One's hdpi density (1.5), so icons and
+            // labels keep their original physical size; the columns fill the width.
             float kk = density / 1.5f;
             grid = new Rect(content);
 
             if (portrait) {
-                // As many 120px columns as fit (4 at the original 480px), centered.
-                int c = Math.max(1, (int) (cw / kk / 120.f));
+                // 4 columns spread over the width (colWidth = getWidth() / 4, as the
+                // original's commented out alternative to 120), icons at original size.
+                final int c = tweakCols > 0 ? tweakCols // Tweaks
+                        : Defines.COLUMNS_PER_PAGE_PORTRAIT;
+                // Tweaks: scale down if the columns would be narrower than the original 120
+                kk = Math.min(kk, cw / (120.f * c));
                 int gh = ch;
-                if (tweakCols > 0) {
-                    // Tweaks: fixed columns, the grid is scaled to fill the width
-                    c = tweakCols;
-                    kk = cw / (120.f * c);
-                }
                 if (tweakRows > 0) {
                     // Tweaks: fixed rows; h = rows * 145 + 180 keeps the original bends
-                    // (120 / h - 80, 760 for 4 rows). Scaled down to fit and centered.
+                    // (120 / h - 80, 760 for 4 rows). Scaled down to fit, centered.
                     kk = Math.min(kk, ch / (tweakRows * 145.f + 180.f));
                     gh = Math.round((tweakRows * 145.f + 180.f) * kk);
+                    grid.top = content.top + (ch - gh) / 2;
+                    grid.bottom = grid.top + gh;
                 }
                 k = kk;
                 cols = c;
-                w = 120.f * cols;
+                w = cw / k;
                 h = gh / k;
-                final int gw = Math.round(w * k);
-                grid.left = content.left + (cw - gw) / 2;
-                grid.right = grid.left + gw;
-                grid.top = content.top + (ch - gh) / 2;
-                grid.bottom = grid.top + gh;
+                colWidth = w / cols;
                 rowHeight = 120.f + 25.f;
                 bendY1 = 120.f;
                 bendY2 = h - 80.f;                      // 680 at the original 760
@@ -241,7 +239,8 @@ public class AllApps3D extends GLSurfaceView
                 k = kk;
                 w = cw / k;
                 h = ch / k;
-                cols = Math.max(1, (int) ((w - 80.f) / 120.f)); // 6 at the original 800
+                cols = Defines.COLUMNS_PER_PAGE_LANDSCAPE;
+                colWidth = (w - 80.f) / cols;           // 120 at the original 800
                 rowHeight = 120.f + 25.f - 12.f;
                 bendY1 = 40.f;
                 bendY2 = h - 40.f;
@@ -608,7 +607,7 @@ public class AllApps3D extends GLSurfaceView
 
         float x = 0;
         // TODO: Put this in a config file/define
-        float columnWidth = 120;
+        float columnWidth = l.colWidth; // Port: was 120
         for (int i = 0; i < mColumnsPerPage + 1; i++) {
             mTouchXBorders[i] = l.grid.left + (int) (x * l.k);
             x += columnWidth;
@@ -1712,7 +1711,7 @@ public class AllApps3D extends GLSurfaceView
 
                 int intRowOffset = (int) rowOffset;
                 float rowFrac = rowOffset - intRowOffset;
-                float colWidth = 120.f;//getWidth() / 4;
+                float colWidth = mRenderer.layout.colWidth; // Port: was 120.f;//getWidth() / 4;
                 // Port: rowHeight (145 / 133 in landscape), yoff and colCount come from
                 // Layout, see its comments for the original values.
                 float rowHeight = l.rowHeight;
