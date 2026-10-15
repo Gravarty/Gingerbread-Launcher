@@ -1165,6 +1165,8 @@ public class AllApps3D extends GLSurfaceView
         boolean mInitialized;
 
         final Renderer mRenderer = new Renderer();
+        /** Port: see Utilities.iconScale(). */
+        final float mIconScale = Utilities.iconScale(AllApps3D.this.getContext());
 
         private boolean checkClickOK() {
             return (Math.abs(mAllApps.mVelocity) < 0.4f) &&
@@ -1858,16 +1860,20 @@ public class AllApps3D extends GLSurfaceView
                             float x = colWidth * col + (colWidth / 2);
                             mRenderer.vpPosition[0] = x + 0.2f;
 
+                            // Port: icon size for the display (Utilities.iconSizeDp()); the
+                            // icon grows upwards from its bottom edge, the gap to the label
+                            // stays the same
+                            final float is = mIconScale;
                             if (state.selectedIconIndex == iconNum && p == 0) {
-                                mRenderer.vpImgSize[0] = Defines.SELECTION_TEXTURE_WIDTH_PX;
-                                mRenderer.vpImgSize[1] = Defines.SELECTION_TEXTURE_HEIGHT_PX;
+                                mRenderer.vpImgSize[0] = Defines.SELECTION_TEXTURE_WIDTH_PX * is;
+                                mRenderer.vpImgSize[1] = Defines.SELECTION_TEXTURE_HEIGHT_PX * is;
                                 mRenderer.vpPosition[1] = y - (Defines.SELECTION_TEXTURE_HEIGHT_PX
-                                        - Defines.ICON_TEXTURE_HEIGHT_PX) * 0.5f;
+                                        - Defines.ICON_TEXTURE_HEIGHT_PX) * 0.5f * is;
                                 mRenderer.drawCell(mRenderer.selectionTexture, false);
                             }
 
-                            mRenderer.vpImgSize[0] = Defines.ICON_TEXTURE_WIDTH_PX;
-                            mRenderer.vpImgSize[1] = Defines.ICON_TEXTURE_HEIGHT_PX;
+                            mRenderer.vpImgSize[0] = Defines.ICON_TEXTURE_WIDTH_PX * is;
+                            mRenderer.vpImgSize[1] = Defines.ICON_TEXTURE_HEIGHT_PX * is;
                             mRenderer.vpPosition[1] = y - 0.2f;
                             mRenderer.drawCell(mRenderer.iconTextures.get(iconNum), false);
 

@@ -61,6 +61,42 @@ public class BubbleTextView extends TextView {
         init();
     }
 
+    /**
+     * Port: icons are larger on today's displays (Utilities.iconSizeDp(), like Launcher3).
+     * Drawables that aren't icon bitmaps (folders) are scaled to match. The cell height is
+     * Gingerbread's, so the view grows upwards into the cell's top margin by the extra icon
+     * height; the label and its bubble keep their place and the gap to the icon.
+     */
+    @Override
+    public void setCompoundDrawables(android.graphics.drawable.Drawable left,
+            android.graphics.drawable.Drawable top, android.graphics.drawable.Drawable right,
+            android.graphics.drawable.Drawable bottom) {
+        int extra = 0;
+        if (top != null && top.getIntrinsicHeight() > 0) {
+            final int texture = Utilities.iconTextureSize(getContext());
+            final float scale = Utilities.iconScale(getContext());
+            final int base = Math.round(texture / scale);
+            if (top.getIntrinsicHeight() < texture * 0.95f && scale != 1f) {
+                top.setBounds(0, 0, Math.round(top.getIntrinsicWidth() * scale),
+                        Math.round(top.getIntrinsicHeight() * scale));
+            }
+            extra = Math.max(0, Math.min(top.getBounds().height() - base,
+                    Math.round(13 * getResources().getDisplayMetrics().density)));
+        }
+        super.setCompoundDrawables(left, top, right, bottom);
+        if (extra != mIconExtra) {
+            mIconExtra = extra;
+            requestLayout();
+        }
+    }
+
+    private int mIconExtra;
+
+    @Override
+    public void layout(int l, int t, int r, int b) {
+        super.layout(l, t - mIconExtra, r, b);
+    }
+
     private void init() {
         setFocusable(true);
         mBackground = getBackground();
