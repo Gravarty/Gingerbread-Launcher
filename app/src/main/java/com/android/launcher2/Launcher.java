@@ -809,6 +809,8 @@ public final class Launcher extends Activity
         // The order here is bottom to top.
         dragController.addDropTarget(workspace);
         dragController.addDropTarget(deleteZone);
+
+        updateBackGesture(); // Port
     }
 
     @SuppressWarnings({"UnusedDeclaration"})
@@ -1480,6 +1482,17 @@ public final class Launcher extends Activity
         }
     }
 
+    /** Port: back gesture only where back does something (see DragLayer). */
+    private boolean mAllAppsShown;
+
+    void updateBackGesture() {
+        final DragLayer dragLayer = (DragLayer) findViewById(R.id.drag_layer);
+        if (dragLayer != null) {
+            dragLayer.setDisallowBackGesture(!mAllAppsShown
+                    && (mWorkspace == null || mWorkspace.getOpenFolder() == null));
+        }
+    }
+
     void closeFolder(Folder folder) {
         folder.getInfo().opened = false;
         ViewGroup parent = (ViewGroup) folder.getParent();
@@ -1491,6 +1504,7 @@ public final class Launcher extends Activity
             }
         }
         folder.onClose();
+        updateBackGesture(); // Port
     }
 
     /**
@@ -1622,6 +1636,7 @@ public final class Launcher extends Activity
 
         mWorkspace.addInScreen(openFolder, folderInfo.screen, 0, 0, 4, 4);
         openFolder.onOpen();
+        updateBackGesture(); // Port
     }
 
     public boolean onLongClick(View v) {
@@ -1962,6 +1977,8 @@ public final class Launcher extends Activity
     }
 
     void showAllApps(boolean animated) {
+        mAllAppsShown = true; // Port
+        updateBackGesture();
         mAllAppsGrid.zoom(1.0f, animated);
 
         ((View) mAllAppsGrid).setFocusable(true);
@@ -2011,6 +2028,8 @@ public final class Launcher extends Activity
      *          - From another workspace
      */
     void closeAllApps(boolean animated) {
+        mAllAppsShown = false; // Port
+        updateBackGesture();
         if (mAllAppsGrid.isVisible()) {
             mWorkspace.setVisibility(View.VISIBLE);
             mAllAppsGrid.zoom(0.0f, animated);
