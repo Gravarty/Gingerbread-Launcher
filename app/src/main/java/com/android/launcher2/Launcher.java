@@ -599,6 +599,9 @@ public final class Launcher extends Activity
     protected void onResume() {
         super.onResume();
         mPaused = false;
+        if (mAllAppsGrid instanceof android.opengl.GLSurfaceView) {
+            ((android.opengl.GLSurfaceView) mAllAppsGrid).onResume();
+        }
         if (mRestoring || mOnResumeNeedsLoad) {
             mWorkspaceLoading = true;
             mModel.startLoader(this, true);
@@ -611,6 +614,9 @@ public final class Launcher extends Activity
     protected void onPause() {
         super.onPause();
         mPaused = true;
+        if (mAllAppsGrid instanceof android.opengl.GLSurfaceView) {
+            ((android.opengl.GLSurfaceView) mAllAppsGrid).onPause();
+        }
         dismissPreview(mPreviousView);
         dismissPreview(mNextView);
         mDragController.cancelDrag();

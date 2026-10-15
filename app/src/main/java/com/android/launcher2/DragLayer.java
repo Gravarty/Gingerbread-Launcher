@@ -61,7 +61,9 @@ public class DragLayer extends FrameLayout {
         setPadding(i.left, i.top, i.right, i.bottom);
 
         final View allApps = findViewById(R.id.all_apps_view);
-        if (allApps != null) {
+        if (allApps instanceof AllApps3D) {
+            ((AllApps3D) allApps).setContentInsets(mInsets);
+        } else if (allApps != null) {
             if (mAllAppsBasePadding == null) {
                 mAllAppsBasePadding = new Rect(allApps.getPaddingLeft(), allApps.getPaddingTop(),
                         allApps.getPaddingRight(), allApps.getPaddingBottom());

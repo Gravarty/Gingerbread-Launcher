@@ -282,12 +282,16 @@ final class Utilities {
             final Resources resources = context.getResources();
 
             final DisplayMetrics metrics = resources.getDisplayMetrics();
-            final float scale = metrics.density;
+            // Port: the labels are textures for AllApps3D, whose layout was made for a
+            // 480px wide hdpi screen (title_texture_width is 120px, text 13sp @ 1.5).
+            // Render them at that layout scaled to this screen, instead of display density.
+            final float k = Math.min(metrics.widthPixels, metrics.heightPixels) / 480f;
+            final float scale = 1.5f * k;
             mDensity = metrics.densityDpi;
 
             final float paddingLeft = 2.0f * scale;
             final float paddingRight = 2.0f * scale;
-            final float cellWidth = resources.getDimension(R.dimen.title_texture_width);
+            final float cellWidth = resources.getDimension(R.dimen.title_texture_width) * k;
 
             RectF bubbleRect = mBubbleRect;
             bubbleRect.left = 0;
@@ -313,7 +317,10 @@ final class Utilities {
             mLineHeight = (int)(leading + ascent + descent + 0.5f);
 
             mBitmapWidth = (int)(mBubbleRect.width() + 0.5f);
-            mBitmapHeight = roundToPow2((int)((MAX_LINES * mLineHeight) + leading + 0.5f));
+            // Port: power-of-two height at the original scale, then scaled, so the texture
+            // keeps the 120x64 proportions AllApps3D draws it with.
+            mBitmapHeight = (int) (roundToPow2(
+                    (int)((((MAX_LINES * mLineHeight) + leading) / k) + 0.5f)) * k + 0.5f);
 
             mBubbleRect.offsetTo((mBitmapWidth-mBubbleRect.width())/2, 0);
 
