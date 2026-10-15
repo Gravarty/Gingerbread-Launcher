@@ -27,6 +27,11 @@
  * background was drawn 1:1. Those pixels are kept as a virtual coordinate space that is
  * scaled uniformly so the background covers the screen (centered, in whole 14px cells so
  * the pulses stay on the background's grid), instead of stretching it to the screen.
+ *
+ * The Nexus S (crespo) shipped a variant through its device overlay
+ * (device/samsung/crespo/overlay/packages/wallpapers/Basic): another background, 32-bit
+ * surface, and pulses at random depths (per-pulse scale) in nexus.rs. NexusSWallpaper
+ * selects it; those script changes are marked "crespo".
  */
 
 package com.android.wallpaper.nexus;
@@ -61,6 +66,11 @@ public class NexusWallpaper extends WallpaperService {
 
     public Engine onCreateEngine() {
         return new RenderScriptEngine();
+    }
+
+    /** Port: true for the Nexus S (crespo) overlay variant. */
+    protected boolean isCrespo() {
+        return false;
     }
 
     /** RenderScriptWallpaper.RenderScriptEngine */
@@ -101,7 +111,7 @@ public class NexusWallpaper extends WallpaperService {
         public void onSurfaceChanged(SurfaceHolder holder, int format, int width, int height) {
             super.onSurfaceChanged(holder, format, width, height);
             if (mRenderer == null) {
-                mRenderer = new NexusRS(width, height);
+                mRenderer = new NexusRS(width, height, isCrespo());
                 mRenderer.init(getResources(), isPreview());
                 mThread = new RenderThread(holder, mRenderer);
                 mThread.start();
@@ -298,9 +308,12 @@ public class NexusWallpaper extends WallpaperService {
             public int command;
         }
 
-        NexusRS(int width, int height) {
+        private final boolean mCrespo;
+
+        NexusRS(int width, int height, boolean crespo) {
             mWidth = width;
             mHeight = height;
+            mCrespo = crespo;
 
             mOptionsARGB.inScaled = false;
             mOptionsARGB.inPreferredConfig = Bitmap.Config.ARGB_8888;
@@ -400,7 +413,8 @@ public class NexusWallpaper extends WallpaperService {
         private final Script mScript = new Script();
 
         void initGl() {
-            mTBackground = loadTextureARGB(R.drawable.pyramid_background);
+            mTBackground = loadTextureARGB(mCrespo
+                    ? R.drawable.pyramid_background_crespo : R.drawable.pyramid_background);
             mTPulse = loadTextureARGB(R.drawable.pulse);
             mTPulseVert = loadTextureARGB(R.drawable.pulse_vert);
             mTGlow = loadTextureARGB(R.drawable.glow);
@@ -586,6 +600,7 @@ public class NexusWallpaper extends WallpaperService {
                 float dx;
                 float dy;
                 int active;
+                float scale; // crespo
             }
 
             final pulse_s[] gPulses = new pulse_s[MAX_PULSES];
@@ -628,6 +643,10 @@ public class NexusWallpaper extends WallpaperService {
             }
 
             void initPulse(pulse_s pulse, int pulseType) {
+                if (mCrespo) {
+                    initPulseCrespo(pulse, pulseType);
+                    return;
+                }
                 final WorldState State = mWorldState;
                 if (randf(1) > 0.5f) {
                     pulse.originX = (int)randf(State.width * 2 / PULSE_SIZE) * PULSE_SIZE;
@@ -652,6 +671,48 @@ public class NexusWallpaper extends WallpaperService {
                         // Right
                         pulse.originX = State.width * 2;
                         pulse.dx = -randf2(1.0f - SPEED_VARIANCE, 1.0f + SPEED_VARIANCE);
+                    }
+                }
+                pulse.startTime = gNow + (int)randf(MAX_DELAY);
+
+                pulse.color = (int)randf(4.0f);
+
+                pulse.pulseType = pulseType;
+                if (pulseType == PULSE_EXTRA) {
+                    pulse.active = 0;
+                } else {
+                    pulse.active = 1;
+                }
+            }
+
+            /** crespo nexus.rs initPulse() */
+            void initPulseCrespo(pulse_s pulse, int pulseType) {
+                final WorldState State = mWorldState;
+                float scale = randf2(0.7f, 1.7f);
+                pulse.scale = scale;
+                if (randf(1) > 0.5f) {
+                    pulse.originX = (int)randf(State.width * 2 / PULSE_SIZE) * PULSE_SIZE;
+                    pulse.dx = 0;
+                    if (randf(1) > 0.5f) {
+                        // Top
+                        pulse.originY = 0;
+                        pulse.dy = scale;
+                    } else {
+                        // Bottom
+                        pulse.originY = State.height / scale;
+                        pulse.dy = -scale;
+                    }
+                } else {
+                    pulse.originY = (int)randf(State.height / PULSE_SIZE) * PULSE_SIZE;
+                    pulse.dy = 0;
+                    if (randf(1) > 0.5f) {
+                        // Left
+                        pulse.originX = 0;
+                        pulse.dx = scale;
+                    } else {
+                        // Right
+                        pulse.originX = State.width * 2 / scale;
+                        pulse.dx = -scale;
                     }
                 }
                 pulse.startTime = gNow + (int)randf(MAX_DELAY);
@@ -700,6 +761,19 @@ public class NexusWallpaper extends WallpaperService {
                     int delta = gNow - p.startTime;
 
                     if (p.active != 0 && delta >= 0) {
+
+                        if (mCrespo) {
+                            float[] modelMatrix = new float[16];
+                            Matrix.setIdentityM(modelMatrix, 0);
+                            if (State.rotate != 0) {
+                                // XXX: HAX: do not slide display in landscape
+                            } else {
+                                 Matrix.translateM(modelMatrix, 0,
+                                         -(State.xOffset * State.width), 0, 0);
+                            }
+                            Matrix.scaleM(modelMatrix, 0, p.scale, p.scale, 1.0f);
+                            vpLoadModelMatrix(modelMatrix);
+                        }
 
                         float x = p.originX + (p.dx * SPEED * delta);
                         float y = p.originY + (p.dy * SPEED * delta);
@@ -763,26 +837,34 @@ public class NexusWallpaper extends WallpaperService {
                 int i;
                 int count = 0;
                 int color = (int)randf(4.0f);
+                float scale = mCrespo ? randf2(0.9f, 1.9f) : 1.5f; // crespo
                 x = (int)(x / PULSE_SIZE) * PULSE_SIZE;
                 y = (int)(y / PULSE_SIZE) * PULSE_SIZE;
                 for (i=0; i<MAX_EXTRAS; i++) {
                     pulse_s p = gExtras[i];
                     if (p.active == 0) {
-                        p.originX = x;
-                        p.originY = y;
+                        if (mCrespo) {
+                            p.originX = x/scale;
+                            p.originY = y/scale;
+                            p.scale = scale;
+                        } else {
+                            p.originX = x;
+                            p.originY = y;
+                        }
 
+                        // stock: 1.5f; crespo: scale
                         if (count == 0) {
-                            p.dx = 1.5f;
+                            p.dx = scale;
                             p.dy = 0.0f;
                         } else if (count == 1) {
-                            p.dx = -1.5f;
+                            p.dx = -scale;
                             p.dy = 0.0f;
                         } else if (count == 2) {
                             p.dx = 0.0f;
-                            p.dy = 1.5f;
+                            p.dy = scale;
                         } else if (count == 3) {
                             p.dx = 0.0f;
-                            p.dy = -1.5f;
+                            p.dy = -scale;
                         }
 
                         p.active = 1;

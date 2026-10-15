@@ -3,4 +3,5 @@
     <string name="wallpaper_nexus">"Nexus"</string>
     <string name="wallpaper_nexus_author">"Google"</string>
     <string name="wallpaper_nexus_desc">"Ein Blick ins neuronale Netzwerk"</string>
+    <string name="wallpaper_nexus_s">"Nexus (Nexus S)"</string>
 </resources>
