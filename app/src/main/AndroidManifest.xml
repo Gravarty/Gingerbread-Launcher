@@ -127,6 +127,18 @@
             </intent-filter>
         </activity>
 
+        <!-- Port: Gingerbread's search widget from AOSP QuickSearchBox, see
+             SearchWidgetProvider. Placed by default like the original <search> favorite. -->
+        <receiver android:name="com.android.quicksearchbox.SearchWidgetProvider"
+            android:label="@string/search_widget"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/search_widget_info" />
+        </receiver>
+
         <!-- The settings provider contains Home's data, like the workspace favorites -->
         <provider
             android:name="com.android.launcher2.LauncherProvider"
