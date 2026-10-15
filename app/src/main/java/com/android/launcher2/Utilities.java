@@ -400,4 +400,14 @@ final class Utilities {
         }
         return n;
     }
+
+    /**
+     * Port: Gingerbread's animations use fixed durations (Scroller, view animations,
+     * tweens), which modern Android doesn't scale. Applies the system animation speed
+     * (animator duration scale, developer options); at least 1 ms when animations are off.
+     */
+    static int scaleDuration(int duration) {
+        return Math.max(1, Math.round(duration
+                * android.animation.ValueAnimator.getDurationScale()));
+    }
 }

@@ -131,7 +131,7 @@ public class DeleteZone extends ImageView implements DropTarget, DragController.
 
     public void onDragEnter(DragSource source, int x, int y, int xOffset, int yOffset,
             DragView dragView, Object dragInfo) {
-        mTransition.reverseTransition(TRANSITION_DURATION);
+        mTransition.reverseTransition(Utilities.scaleDuration(TRANSITION_DURATION)); // Port
         dragView.setPaint(mTrashPaint);
     }
 
@@ -141,7 +141,7 @@ public class DeleteZone extends ImageView implements DropTarget, DragController.
 
     public void onDragExit(DragSource source, int x, int y, int xOffset, int yOffset,
             DragView dragView, Object dragInfo) {
-        mTransition.reverseTransition(TRANSITION_DURATION);
+        mTransition.reverseTransition(Utilities.scaleDuration(TRANSITION_DURATION)); // Port
         dragView.setPaint(null);
     }
 
@@ -156,6 +156,7 @@ public class DeleteZone extends ImageView implements DropTarget, DragController.
                     location[1] + getBottom() - getTop());
             mDragController.setDeleteRegion(mRegion);
             mTransition.resetTransition();
+            setAnimationDurations();
             startAnimation(mInAnimation);
             mHandle.startAnimation(mHandleOutAnimation);
             setVisibility(VISIBLE);
@@ -166,10 +167,20 @@ public class DeleteZone extends ImageView implements DropTarget, DragController.
         if (mTrashMode) {
             mTrashMode = false;
             mDragController.setDeleteRegion(null);
+            setAnimationDurations();
             startAnimation(mOutAnimation);
             mHandle.startAnimation(mHandleInAnimation);
             setVisibility(GONE);
         }
+    }
+
+    // Port: system animation speed, read each time an animation starts
+    private void setAnimationDurations() {
+        final int duration = Utilities.scaleDuration(ANIMATION_DURATION);
+        if (mInAnimation != null) mInAnimation.setDuration(duration);
+        if (mHandleInAnimation != null) mHandleInAnimation.setDuration(duration);
+        if (mOutAnimation != null) mOutAnimation.setDuration(duration);
+        if (mHandleOutAnimation != null) mHandleOutAnimation.setDuration(duration);
     }
 
     private void createAnimations() {

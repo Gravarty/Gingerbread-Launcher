@@ -999,6 +999,7 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
             duration += 100;
         }
 
+        duration = Utilities.scaleDuration(duration); // Port: system animation speed
         awakenScrollBars(duration);
         mScroller.startScroll(getScrollX(), 0, delta, 0, duration);
         invalidate();

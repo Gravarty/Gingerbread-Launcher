@@ -1423,6 +1423,8 @@ public class AllApps3D extends GLSurfaceView
             float g_LastPositionX;
             int g_LastTouchDown;
             float g_DT;
+            float g_AnimScale = 1.f; // Port
+            float g_PhysicsDT;       // Port: g_DT at the system animation speed
             long g_LastTime;
             int g_PosMax;
             float g_Zoom;
@@ -1593,17 +1595,17 @@ public class AllApps3D extends GLSurfaceView
                 float tablePosFrac = tablePosF - tablePosI;
                 float accel = lerpf(g_AttractionTable[tablePosI],
                                     g_AttractionTable[tablePosI + 1],
-                                    tablePosFrac) * g_DT;
+                                    tablePosFrac) * g_PhysicsDT;
                 float friction = lerpf(g_FrictionTable[tablePosI],
                                     g_FrictionTable[tablePosI + 1],
-                                    tablePosFrac) * g_DT;
+                                    tablePosFrac) * g_PhysicsDT;
 
                 if (g_MoveToTime != 0) {
                     // New position is old posiition + (total distance) * (interpolated time)
                     g_PosPage = g_MoveToOldPos + (state.targetPos - g_MoveToOldPos)
                             * getInterpolation((g_MoveToTotalTime - g_MoveToTime)
                             / g_MoveToTotalTime);
-                    g_MoveToTime -= g_DT;
+                    g_MoveToTime = g_AnimScale > 0 ? g_MoveToTime - g_PhysicsDT : 0;
                     if (g_MoveToTime <= 0) {
                         g_MoveToTime = 0;
                         g_PosPage = state.targetPos;
@@ -1628,7 +1630,7 @@ public class AllApps3D extends GLSurfaceView
                 if ((friction > Math.abs(g_PosVelocity)) && (friction > Math.abs(accel))) {
                     // Special get back to center and overcome friction physics.
                     float t = tablePosNorm - 0.5f;
-                    if (Math.abs(t) < (friction * g_DT)) {
+                    if (Math.abs(t) < (friction * g_PhysicsDT)) {
                         // really close, just snap
                         g_PosPage = roundf(g_PosPage);
                         g_PosVelocity = 0;
@@ -1653,7 +1655,7 @@ public class AllApps3D extends GLSurfaceView
                     g_PosVelocity *= damp;
                 }
 
-                g_PosPage += g_PosVelocity * g_DT;
+                g_PosPage += g_PosVelocity * g_PhysicsDT;
                 g_PosPage = clampf(g_PosPage, -0.49f, g_PosMax + 0.49f);
             }
 
@@ -1758,10 +1760,16 @@ public class AllApps3D extends GLSurfaceView
                 // physics may break if DT is large.
                 g_DT = Math.min(g_DT, 0.2f);
 
+                // Port: the system animation speed (animator duration scale) also applies
+                // to the scrolling after a fling, the snapping/bounce and moveTo(), as a
+                // time step of its own. Animations off: moveTo() jumps, the scrolling
+                // physics run 10x faster.
+                g_AnimScale = android.animation.ValueAnimator.getDurationScale();
+                g_PhysicsDT = g_DT / Math.max(g_AnimScale, 0.1f);
+
                 if (g_Zoom != state.zoomTarget) {
                     // Port: follows the system animation speed (animator duration scale)
-                    final float scale = android.animation.ValueAnimator.getDurationScale();
-                    float dz = scale > 0 ? g_DT * 1.7f / scale : 1.f;
+                    float dz = g_AnimScale > 0 ? g_DT * 1.7f / g_AnimScale : 1.f;
                     if (state.zoomTarget < 0.5f) {
                         dz = -dz;
                     }
@@ -1794,7 +1802,14 @@ public class AllApps3D extends GLSurfaceView
                 g_PosMax = ((iconCount + (g_Cols-1)) / g_Cols) - g_Rows;
                 if (g_PosMax < 0) g_PosMax = 0;
 
-                updatePos();
+                // Port: faster animation speed -> larger time step; split it into steps
+                // no larger than a 30 fps frame so the physics stay as they were.
+                final float physicsDT = g_PhysicsDT;
+                final int steps = Math.max(1, (int) Math.ceil(physicsDT / 0.033f));
+                g_PhysicsDT = physicsDT / steps;
+                for (int i = 0; i < steps; i++) {
+                    updatePos();
+                }
                 updateReadback();
 
                 //debugF("    draw g_PosPage", g_PosPage);
