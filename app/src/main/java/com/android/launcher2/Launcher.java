@@ -215,7 +215,11 @@ public final class Launcher extends Activity
             // browser is now inside the dock: HotseatButton instead of HotseatButton.Right
             final ImageView ref = (ImageView) getLayoutInflater().inflate(
                     R.layout.hotseat_extra, cluster, false);
+            // setBackground() would replace the style's padding with the 9-patch padding
+            final int pl = browser.getPaddingLeft(), pt = browser.getPaddingTop(),
+                    pr = browser.getPaddingRight(), pb = browser.getPaddingBottom();
             browser.setBackground(ref.getBackground());
+            browser.setPadding(pl, pt, pr, pb);
             final ViewGroup.MarginLayoutParams lp =
                     (ViewGroup.MarginLayoutParams) browser.getLayoutParams();
             lp.topMargin = lp.rightMargin = 0;
