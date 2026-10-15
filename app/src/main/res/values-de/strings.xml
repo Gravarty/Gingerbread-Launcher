@@ -43,7 +43,7 @@
     <string name="tweaks_home_columns">"Startbildschirm: Spalten"</string>
     <string name="tweaks_home_rows">"Startbildschirm: Zeilen"</string>
     <string name="tweaks_drawer_columns">"App-Drawer: Spalten"</string>
-    <string name="tweaks_drawer_rows">"App-Drawer: Zeilen (0 = automatisch)"</string>
+    <string name="tweaks_drawer_rows">"App-Drawer: Zeilen"</string>
     <string name="tweaks_reset">"Standard"</string>
     <string name="add_folder" msgid="3521088587367839879">"Ordner"</string>
     <string name="add_clock" msgid="2337943840175865746">"Uhr"</string>

@@ -76,7 +76,7 @@
     <string name="tweaks_home_columns">Home screen columns</string>
     <string name="tweaks_home_rows">Home screen rows</string>
     <string name="tweaks_drawer_columns">App drawer columns</string>
-    <string name="tweaks_drawer_rows">App drawer rows (0 = auto)</string>
+    <string name="tweaks_drawer_rows">App drawer rows</string>
     <string name="tweaks_reset">Default</string>
     <!-- Options in "Add to Home" dialog box; Name of the Folder widget-->
     <string name="add_folder">Folder</string>

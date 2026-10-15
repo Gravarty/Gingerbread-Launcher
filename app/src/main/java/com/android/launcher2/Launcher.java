@@ -2163,23 +2163,20 @@ public final class Launcher extends Activity
 
         final LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(pad, pad / 2, pad, 0);
+        layout.setPadding(pad, pad / 2, pad, pad / 2);
 
-        final android.widget.NumberPicker homeColumns = addTweakPicker(layout,
+        final int[] homeColumns = addTweakRow(layout,
                 R.string.tweaks_home_columns, 3, 7, prefs.getInt(TWEAK_HOME_COLUMNS, 4));
-        final android.widget.NumberPicker homeRows = addTweakPicker(layout,
+        final int[] homeRows = addTweakRow(layout,
                 R.string.tweaks_home_rows, 3, 8, prefs.getInt(TWEAK_HOME_ROWS, 4));
-        final android.widget.NumberPicker drawerColumns = addTweakPicker(layout,
+        final int[] drawerColumns = addTweakRow(layout,
                 R.string.tweaks_drawer_columns, 3, 7, prefs.getInt(TWEAK_DRAWER_COLUMNS, 4));
-        final android.widget.NumberPicker drawerRows = addTweakPicker(layout,
+        final int[] drawerRows = addTweakRow(layout,
                 R.string.tweaks_drawer_rows, 0, 8, prefs.getInt(TWEAK_DRAWER_ROWS, 0));
-
-        final android.widget.ScrollView scroll = new android.widget.ScrollView(this);
-        scroll.addView(layout);
 
         new AlertDialog.Builder(this)
                 .setTitle(R.string.group_tweaks)
-                .setView(scroll)
+                .setView(layout)
                 .setNegativeButton(R.string.cancel_action, null)
                 .setNeutralButton(R.string.tweaks_reset, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
@@ -2190,10 +2187,10 @@ public final class Launcher extends Activity
                 .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         prefs.edit()
-                                .putInt(TWEAK_HOME_COLUMNS, homeColumns.getValue())
-                                .putInt(TWEAK_HOME_ROWS, homeRows.getValue())
-                                .putInt(TWEAK_DRAWER_COLUMNS, drawerColumns.getValue())
-                                .putInt(TWEAK_DRAWER_ROWS, drawerRows.getValue())
+                                .putInt(TWEAK_HOME_COLUMNS, homeColumns[0])
+                                .putInt(TWEAK_HOME_ROWS, homeRows[0])
+                                .putInt(TWEAK_DRAWER_COLUMNS, drawerColumns[0])
+                                .putInt(TWEAK_DRAWER_ROWS, drawerRows[0])
                                 .apply();
                         applyTweaks();
                     }
@@ -2201,19 +2198,57 @@ public final class Launcher extends Activity
                 .show();
     }
 
-    // Tweaks
-    private android.widget.NumberPicker addTweakPicker(LinearLayout parent, int label,
-            int min, int max, int value) {
+    // Tweaks: "label  [-] value [+]" row; returns the live value holder
+    private int[] addTweakRow(LinearLayout parent, int label, final int min, final int max,
+            int value) {
+        final int[] holder = new int[] { Math.max(min, Math.min(max, value)) };
+        final float density = getResources().getDisplayMetrics().density;
+
+        final LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+
         final TextView title = new TextView(this);
         title.setText(label);
-        parent.addView(title);
-        final android.widget.NumberPicker picker = new android.widget.NumberPicker(this);
-        picker.setMinValue(min);
-        picker.setMaxValue(max);
-        picker.setValue(Math.max(min, Math.min(max, value)));
-        picker.setWrapSelectorWheel(false);
-        parent.addView(picker);
-        return picker;
+        row.addView(title, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        final android.widget.Button minus = new android.widget.Button(this);
+        minus.setText("\u2212");
+        final TextView valueView = new TextView(this);
+        valueView.setGravity(android.view.Gravity.CENTER);
+        valueView.setTextSize(18);
+        final android.widget.Button plus = new android.widget.Button(this);
+        plus.setText("+");
+
+        final Runnable update = new Runnable() {
+            public void run() {
+                valueView.setText(holder[0] == 0 ? "Auto" : String.valueOf(holder[0]));
+                minus.setEnabled(holder[0] > min);
+                plus.setEnabled(holder[0] < max);
+            }
+        };
+        minus.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                if (holder[0] > min) holder[0]--;
+                update.run();
+            }
+        });
+        plus.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                if (holder[0] < max) holder[0]++;
+                update.run();
+            }
+        });
+        update.run();
+
+        final int buttonSize = (int) (48 * density);
+        row.addView(minus, new LinearLayout.LayoutParams(buttonSize, buttonSize));
+        row.addView(valueView, new LinearLayout.LayoutParams((int) (56 * density),
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+        row.addView(plus, new LinearLayout.LayoutParams(buttonSize, buttonSize));
+        parent.addView(row);
+        return holder;
     }
 
     // Tweaks: rebuild the workspace and drawer with the new grid
