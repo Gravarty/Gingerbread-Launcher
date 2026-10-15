@@ -140,6 +140,128 @@ public final class Launcher extends Activity
     static final String TWEAK_DRAWER_ROWS = "drawer_rows";
     static final String TWEAK_HOME_SCREENS = "home_screens";
     static final String TWEAK_SWIPE_DOWN_NOTIFICATIONS = "swipe_down_notifications";
+    // Tweaks: extra dock slots, added in the order
+    // phone, [contacts], [messaging], (all apps), browser, [email], [camera]
+    static final String[] DOCK_KEYS = { "dock_contacts", "dock_messaging", "dock_mail",
+            "dock_camera" };
+    static final String[] DOCK_INTENTS = {
+        "intent:#Intent;action=android.intent.action.MAIN;"
+                + "category=android.intent.category.APP_CONTACTS;end",
+        "intent:#Intent;action=android.intent.action.MAIN;"
+                + "category=android.intent.category.APP_MESSAGING;end",
+        "intent:#Intent;action=android.intent.action.MAIN;"
+                + "category=android.intent.category.APP_EMAIL;end",
+        "intent:#Intent;action=android.media.action.STILL_IMAGE_CAMERA;end",
+    };
+    static final int[] DOCK_ICONS = { R.drawable.hotseat_contacts, R.drawable.hotseat_messaging,
+            R.drawable.hotseat_mail, R.drawable.hotseat_camera };
+    static final int[] DOCK_LABELS = { R.string.tweaks_dock_contacts,
+            R.string.tweaks_dock_messaging, R.string.tweaks_dock_mail,
+            R.string.tweaks_dock_camera };
+
+    /**
+     * Tweaks: insert the enabled extra dock buttons. Without extras nothing is touched.
+     * New buttons are inflated with the stock HotseatButton styles; the stock phone and
+     * browser buttons only get re-anchored, and the browser button its center background
+     * when it's no longer the outermost one.
+     */
+    private void setupDockExtras(ImageView phone, ImageView browser) {
+        final android.content.SharedPreferences prefs =
+                getSharedPreferences(TWEAKS_PREFERENCES, MODE_PRIVATE);
+        final boolean[] on = new boolean[DOCK_KEYS.length];
+        boolean any = false;
+        for (int i = 0; i < DOCK_KEYS.length; i++) {
+            on[i] = prefs.getBoolean(DOCK_KEYS[i], false);
+            any |= on[i];
+        }
+        if (!any) return;
+
+        final android.widget.RelativeLayout cluster =
+                (android.widget.RelativeLayout) findViewById(R.id.all_apps_button_cluster);
+        final boolean landscape = getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+        final int toOuterLeft = landscape ? android.widget.RelativeLayout.BELOW
+                : android.widget.RelativeLayout.LEFT_OF;
+        final int toOuterRight = landscape ? android.widget.RelativeLayout.ABOVE
+                : android.widget.RelativeLayout.RIGHT_OF;
+        final java.util.ArrayList<ImageView> added = new java.util.ArrayList<ImageView>();
+
+        // Left: all apps <- messaging <- contacts <- phone
+        int anchor = R.id.all_apps_button;
+        for (int slot : new int[] { 1, 0 }) {
+            if (!on[slot]) continue;
+            final ImageView b = addDockButton(cluster, R.layout.hotseat_extra, slot);
+            ((android.widget.RelativeLayout.LayoutParams) b.getLayoutParams())
+                    .addRule(toOuterLeft, anchor);
+            anchor = b.getId();
+            added.add(b);
+        }
+        ((android.widget.RelativeLayout.LayoutParams) phone.getLayoutParams())
+                .addRule(toOuterLeft, anchor);
+
+        // Right: all apps -> browser -> email -> camera
+        anchor = R.id.hotseat_right;
+        final int lastRight = on[3] ? 3 : (on[2] ? 2 : -1);
+        for (int slot : new int[] { 2, 3 }) {
+            if (!on[slot]) continue;
+            final ImageView b = addDockButton(cluster, slot == lastRight
+                    ? R.layout.hotseat_extra_right : R.layout.hotseat_extra, slot);
+            ((android.widget.RelativeLayout.LayoutParams) b.getLayoutParams())
+                    .addRule(toOuterRight, anchor);
+            anchor = b.getId();
+            added.add(b);
+        }
+        if (lastRight >= 0) {
+            // browser is now inside the dock: HotseatButton instead of HotseatButton.Right
+            final ImageView ref = (ImageView) getLayoutInflater().inflate(
+                    R.layout.hotseat_extra, cluster, false);
+            browser.setBackground(ref.getBackground());
+            final ViewGroup.MarginLayoutParams lp =
+                    (ViewGroup.MarginLayoutParams) browser.getLayoutParams();
+            lp.topMargin = lp.rightMargin = 0;
+        }
+
+        // Only if the buttons don't fit: shrink their side padding evenly
+        final android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+        final int available = landscape ? dm.heightPixels : dm.widthPixels;
+        final java.util.ArrayList<View> all = new java.util.ArrayList<View>(added);
+        all.add(phone);
+        all.add(browser);
+        all.add(findViewById(R.id.all_apps_button));
+        int needed = (int) (8 * dm.density); // outer margins
+        int paddings = 0;
+        for (View v : all) {
+            final android.graphics.drawable.Drawable d = ((ImageView) v).getDrawable();
+            final int content = d == null ? 0
+                    : (landscape ? d.getIntrinsicHeight() : d.getIntrinsicWidth());
+            final int pad = landscape ? v.getPaddingTop() + v.getPaddingBottom()
+                    : v.getPaddingLeft() + v.getPaddingRight();
+            needed += content + pad;
+            paddings += pad;
+        }
+        if (needed > available && paddings > 0) {
+            final float scale = Math.max(0f, 1f - (float) (needed - available) / paddings);
+            for (View v : all) {
+                if (landscape) {
+                    v.setPadding(v.getPaddingLeft(), (int) (v.getPaddingTop() * scale),
+                            v.getPaddingRight(), (int) (v.getPaddingBottom() * scale));
+                } else {
+                    v.setPadding((int) (v.getPaddingLeft() * scale), v.getPaddingTop(),
+                            (int) (v.getPaddingRight() * scale), v.getPaddingBottom());
+                }
+            }
+        }
+    }
+
+    private ImageView addDockButton(ViewGroup cluster, int layout, int slot) {
+        final ImageView b = (ImageView) getLayoutInflater().inflate(layout, cluster, false);
+        b.setId(View.generateViewId());
+        b.setTag(slot + 2); // index in mHotseats
+        b.setImageDrawable(mHotseatIcons[slot + 2]);
+        b.setContentDescription(mHotseatLabels[slot + 2]);
+        cluster.addView(b);
+        return b;
+    }
     static boolean SWIPE_DOWN_NOTIFICATIONS = false;
     static final String TWEAK_HIDDEN_APPS = "hidden_apps"; // flattened ComponentNames
 
@@ -451,6 +573,11 @@ public final class Launcher extends Activity
     private void loadHotseats() {
         if (mHotseatConfig == null) {
             mHotseatConfig = getResources().getStringArray(R.array.hotseats);
+            // Tweaks: optional extra dock slots after the two stock ones
+            if (mHotseatConfig.length == 2) {
+                mHotseatConfig = new String[] { mHotseatConfig[0], mHotseatConfig[1],
+                        DOCK_INTENTS[0], DOCK_INTENTS[1], DOCK_INTENTS[2], DOCK_INTENTS[3] };
+            }
             if (mHotseatConfig.length > 0) {
                 mHotseats = new Intent[mHotseatConfig.length];
                 mHotseatLabels = new CharSequence[mHotseatConfig.length];
@@ -465,7 +592,9 @@ public final class Launcher extends Activity
             for (int i=0; i<mHotseatConfig.length; i++) {
                 // load icon for this slot; currently unrelated to the actual activity
                 try {
-                    mHotseatIcons[i] = hotseatIconDrawables.getDrawable(i);
+                    mHotseatIcons[i] = i >= 2 // Tweaks: extra dock slots
+                            ? getResources().getDrawable(DOCK_ICONS[i - 2])
+                            : hotseatIconDrawables.getDrawable(i);
                 } catch (ArrayIndexOutOfBoundsException ex) {
                     Log.w(TAG, "Missing hotseat_icons array item #" + i);
                     mHotseatIcons[i] = null;
@@ -813,6 +942,7 @@ public final class Launcher extends Activity
         ImageView hotseatRight = (ImageView) findViewById(R.id.hotseat_right);
         hotseatRight.setContentDescription(mHotseatLabels[1]);
         hotseatRight.setImageDrawable(mHotseatIcons[1]);
+        setupDockExtras(hotseatLeft, hotseatRight); // Tweaks
 
         mPreviousView = (ImageView) dragLayer.findViewById(R.id.previous_screen);
         mNextView = (ImageView) dragLayer.findViewById(R.id.next_screen);
@@ -865,7 +995,9 @@ public final class Launcher extends Activity
         if (isAllAppsVisible()) return;
 
         int index = -1;
-        if (v.getId() == R.id.hotseat_left) {
+        if (v.getTag() instanceof Integer) { // Tweaks: extra dock slot
+            index = (Integer) v.getTag();
+        } else if (v.getId() == R.id.hotseat_left) {
             index = 0;
         } else if (v.getId() == R.id.hotseat_right) {
             index = 1;
@@ -2241,6 +2373,16 @@ public final class Launcher extends Activity
         swipeDown.setChecked(prefs.getBoolean(TWEAK_SWIPE_DOWN_NOTIFICATIONS, false));
         layout.addView(swipeDown);
 
+        // Tweaks: extra dock slots
+        final android.widget.CheckBox[] dockBoxes = new android.widget.CheckBox[DOCK_KEYS.length];
+        for (int i = 0; i < DOCK_KEYS.length; i++) {
+            dockBoxes[i] = new android.widget.CheckBox(this);
+            dockBoxes[i].setText(getString(R.string.tweaks_dock) + ": "
+                    + getString(DOCK_LABELS[i]));
+            dockBoxes[i].setChecked(prefs.getBoolean(DOCK_KEYS[i], false));
+            layout.addView(dockBoxes[i]);
+        }
+
         final android.widget.Button hiddenApps = new android.widget.Button(this);
         hiddenApps.setText(R.string.tweaks_hidden_apps);
         hiddenApps.setOnClickListener(new View.OnClickListener() {
@@ -2262,6 +2404,11 @@ public final class Launcher extends Activity
                 })
                 .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
+                        final android.content.SharedPreferences.Editor dockEditor = prefs.edit();
+                        for (int i = 0; i < DOCK_KEYS.length; i++) {
+                            dockEditor.putBoolean(DOCK_KEYS[i], dockBoxes[i].isChecked());
+                        }
+                        dockEditor.apply();
                         prefs.edit()
                                 .putInt(TWEAK_HOME_COLUMNS, homeColumns[0])
                                 .putInt(TWEAK_HOME_ROWS, homeRows[0])

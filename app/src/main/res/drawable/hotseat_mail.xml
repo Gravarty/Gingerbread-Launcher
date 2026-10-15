@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tweaks: dock icon from the Gingerbread Email app (AOSP android-2.3.7_r1), at the size of
+     the original dock icons (40dp). Pressed/focused tinted with the launcher's glow
+     colors (#ffc300 / #ff8e00) like the original dock icons turn yellow/orange. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <layer-list>
+            <item android:width="40dp" android:height="40dp" android:gravity="center">
+                <bitmap android:src="@drawable/hotseat_mail_icon"
+                    android:tint="#99ffc300" android:tintMode="src_atop" />
+            </item>
+        </layer-list>
+    </item>
+    <item android:state_focused="true" android:state_window_focused="true">
+        <layer-list>
+            <item android:width="40dp" android:height="40dp" android:gravity="center">
+                <bitmap android:src="@drawable/hotseat_mail_icon"
+                    android:tint="#99ff8e00" android:tintMode="src_atop" />
+            </item>
+        </layer-list>
+    </item>
+    <item>
+        <layer-list>
+            <item android:width="40dp" android:height="40dp" android:gravity="center"
+                android:drawable="@drawable/hotseat_mail_icon" />
+        </layer-list>
+    </item>
+</selector>
