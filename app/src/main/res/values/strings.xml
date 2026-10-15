@@ -79,6 +79,8 @@
     <string name="tweaks_dock_mail">Email</string>
     <string name="tweaks_dock_camera">Camera</string>
     <string name="tweaks_reset">Default</string>
+    <string name="tweaks_system_font">System font</string>
+    <string name="tweaks_system_font_summary">Use the system font instead of Gingerbread\'s Droid Sans</string>
     <string name="tweaks_swipe_up_all_apps">Swipe up</string>
     <string name="tweaks_swipe_up_all_apps_summary">Open the app drawer with a swipe up; swipe down at the top of the list to close it</string>
     <string name="tweaks_category_icons">Icons</string>

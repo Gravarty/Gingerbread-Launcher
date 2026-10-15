@@ -324,8 +324,11 @@ public final class Launcher extends Activity
 
     /** Port: Gingerbread's system font (Droid Sans) instead of today's system font. */
     static boolean useDroidSans(Context context) {
-        return true;
+        // Tweaks: or the system font
+        return !context.getSharedPreferences(TWEAKS_PREFERENCES, MODE_PRIVATE)
+                .getBoolean(TWEAK_SYSTEM_FONT, false);
     }
+    static final String TWEAK_SYSTEM_FONT = "system_font";
 
     static final int DIALOG_CREATE_SHORTCUT = 1;
     static final int DIALOG_RENAME_FOLDER = 2;
@@ -2436,6 +2439,9 @@ public final class Launcher extends Activity
         @Override
         protected void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
+            if (useDroidSans(this)) {
+                getTheme().applyStyle(R.style.DroidSansFont, true);
+            }
             setContentView(R.layout.settings);
             ((TextView) findViewById(R.id.settings_title)).setText(R.string.group_tweaks);
             mPrefs = getSharedPreferences(TWEAKS_PREFERENCES, MODE_PRIVATE);
@@ -2455,6 +2461,8 @@ public final class Launcher extends Activity
                 addCategory(R.string.tweaks_category_display);
                 addCheck(R.string.tweaks_no_bar_backgrounds,
                         R.string.tweaks_no_bar_backgrounds_summary, TWEAK_NO_BAR_BACKGROUNDS);
+                addCheck(R.string.tweaks_system_font, R.string.tweaks_system_font_summary,
+                        TWEAK_SYSTEM_FONT);
                 addCategory(R.string.tweaks_category_gestures);
                 addCheck(R.string.tweaks_swipe_down_notifications,
                         R.string.tweaks_swipe_down_notifications_summary,
@@ -2539,6 +2547,9 @@ public final class Launcher extends Activity
                 box.setChecked(!box.isChecked());
                 mPrefs.edit().putBoolean(key, box.isChecked()).apply();
                 sChanged = true;
+                if (TWEAK_SYSTEM_FONT.equals(key)) {
+                    sIconsChanged = true; // the drawer labels are drawn with the font
+                }
             });
         }
 

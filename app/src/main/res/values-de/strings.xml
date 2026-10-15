@@ -46,6 +46,8 @@
     <string name="tweaks_dock_mail">"E-Mail"</string>
     <string name="tweaks_dock_camera">"Kamera"</string>
     <string name="tweaks_reset">"Standard"</string>
+    <string name="tweaks_system_font">"Systemschrift"</string>
+    <string name="tweaks_system_font_summary">"Systemschrift statt Droid Sans aus Gingerbread verwenden"</string>
     <string name="tweaks_swipe_up_all_apps">"Nach oben wischen"</string>
     <string name="tweaks_swipe_up_all_apps_summary">"Öffnet den App-Drawer; im Drawer ganz oben nach unten wischen schließt ihn"</string>
     <string name="tweaks_category_icons">"Symbole"</string>

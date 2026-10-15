@@ -43,7 +43,7 @@ public class IconCache {
     private final Bitmap mDefaultIcon;
     private final LauncherApplication mContext;
     private final PackageManager mPackageManager;
-    private final Utilities.BubbleText mBubble;
+    private Utilities.BubbleText mBubble; // Tweaks: not final, the font can change
     private final HashMap<ComponentName, CacheEntry> mCache =
             new HashMap<ComponentName, CacheEntry>(INITIAL_ICON_CACHE_CAPACITY);
 
@@ -80,6 +80,7 @@ public class IconCache {
     public void flush() {
         synchronized (mCache) {
             mCache.clear();
+            mBubble = new Utilities.BubbleText(mContext); // Tweaks: font setting
         }
     }
 
