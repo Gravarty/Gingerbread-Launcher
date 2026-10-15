@@ -178,6 +178,7 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
         
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.Workspace, defStyle, 0);
         mDefaultScreen = a.getInt(R.styleable.Workspace_defaultScreen, 1);
+        mDefaultScreen = Launcher.DEFAULT_SCREEN; // Tweaks: depends on the screen count
         a.recycle();
 
         setHapticFeedbackEnabled(false);
@@ -427,6 +428,12 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
     private void updateWallpaperOffset(int scrollRange) {
         IBinder token = getWindowToken();
         if (token != null) {
+            // Tweaks: with a single screen there's nothing to scroll; center the wallpaper
+            if (getChildCount() < 2 || scrollRange <= 0) {
+                mWallpaperManager.setWallpaperOffsetSteps(0, 0);
+                mWallpaperManager.setWallpaperOffsets(getWindowToken(), 0.5f, 0);
+                return;
+            }
             mWallpaperManager.setWallpaperOffsetSteps(1.0f / (getChildCount() - 1), 0 );
             mWallpaperManager.setWallpaperOffsets(getWindowToken(),
                     Math.max(0.f, Math.min(getScrollX()/(float)scrollRange, 1.f)), 0);

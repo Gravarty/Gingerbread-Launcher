@@ -125,8 +125,9 @@ public final class Launcher extends Activity
 
     static final String EXTRA_SHORTCUT_DUPLICATE = "duplicate";
 
-    static final int SCREEN_COUNT = 5;
-    static final int DEFAULT_SCREEN = 2;
+    // Tweaks: number of home screens is configurable (5 is the stock value, max. 5)
+    static int SCREEN_COUNT = 5;
+    static int DEFAULT_SCREEN = 2;
     // Tweaks: grid size is configurable (4x4 is the stock value)
     static int NUMBER_CELLS_X = 4;
     static int NUMBER_CELLS_Y = 4;
@@ -137,6 +138,8 @@ public final class Launcher extends Activity
     static final String TWEAK_HOME_ROWS = "home_rows";
     static final String TWEAK_DRAWER_COLUMNS = "drawer_columns";
     static final String TWEAK_DRAWER_ROWS = "drawer_rows";
+    static final String TWEAK_HOME_SCREENS = "home_screens";
+    static final String TWEAK_HIDDEN_APPS = "hidden_apps"; // flattened ComponentNames
 
     // Tweaks
     static void loadTweaks(Context context) {
@@ -144,6 +147,11 @@ public final class Launcher extends Activity
                 context.getSharedPreferences(TWEAKS_PREFERENCES, MODE_PRIVATE);
         NUMBER_CELLS_X = prefs.getInt(TWEAK_HOME_COLUMNS, 4);
         NUMBER_CELLS_Y = prefs.getInt(TWEAK_HOME_ROWS, 4);
+        SCREEN_COUNT = Math.max(1, Math.min(5, prefs.getInt(TWEAK_HOME_SCREENS, 5)));
+        DEFAULT_SCREEN = (SCREEN_COUNT - 1) / 2; // the middle one, 2 of 5 as in stock
+        synchronized (sLock) {
+            sScreen = Math.max(0, Math.min(sScreen, SCREEN_COUNT - 1));
+        }
     }
 
     static final int DIALOG_CREATE_SHORTCUT = 1;
@@ -782,6 +790,10 @@ public final class Launcher extends Activity
 
         mWorkspace = (Workspace) dragLayer.findViewById(R.id.workspace);
         final Workspace workspace = mWorkspace;
+        // Tweaks: drop the screens beyond the configured count
+        while (workspace.getChildCount() > SCREEN_COUNT) {
+            workspace.removeViewAt(workspace.getChildCount() - 1);
+        }
         workspace.setHapticFeedbackEnabled(false);
 
         DeleteZone deleteZone = (DeleteZone) dragLayer.findViewById(R.id.delete_zone);
@@ -2195,10 +2207,21 @@ public final class Launcher extends Activity
                 R.string.tweaks_home_columns, 3, 7, prefs.getInt(TWEAK_HOME_COLUMNS, 4));
         final int[] homeRows = addTweakRow(layout,
                 R.string.tweaks_home_rows, 3, 8, prefs.getInt(TWEAK_HOME_ROWS, 4));
+        final int[] homeScreens = addTweakRow(layout,
+                R.string.tweaks_home_screens, 1, 5, prefs.getInt(TWEAK_HOME_SCREENS, 5));
         final int[] drawerColumns = addTweakRow(layout,
                 R.string.tweaks_drawer_columns, 2, 7, prefs.getInt(TWEAK_DRAWER_COLUMNS, 0));
         final int[] drawerRows = addTweakRow(layout,
                 R.string.tweaks_drawer_rows, 2, 8, prefs.getInt(TWEAK_DRAWER_ROWS, 0));
+
+        final android.widget.Button hiddenApps = new android.widget.Button(this);
+        hiddenApps.setText(R.string.tweaks_hidden_apps);
+        hiddenApps.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                showHiddenAppsDialog();
+            }
+        });
+        layout.addView(hiddenApps);
 
         new AlertDialog.Builder(this)
                 .setTitle(R.string.group_tweaks)
@@ -2215,6 +2238,7 @@ public final class Launcher extends Activity
                         prefs.edit()
                                 .putInt(TWEAK_HOME_COLUMNS, homeColumns[0])
                                 .putInt(TWEAK_HOME_ROWS, homeRows[0])
+                                .putInt(TWEAK_HOME_SCREENS, homeScreens[0])
                                 .putInt(TWEAK_DRAWER_COLUMNS, drawerColumns[0])
                                 .putInt(TWEAK_DRAWER_ROWS, drawerRows[0])
                                 .apply();
@@ -2278,6 +2302,69 @@ public final class Launcher extends Activity
         row.addView(plus, new LinearLayout.LayoutParams(buttonSize, buttonSize));
         parent.addView(row);
         return holder;
+    }
+
+    // Tweaks: choose apps to hide from the app drawer
+    private void showHiddenAppsDialog() {
+        final android.content.SharedPreferences prefs =
+                getSharedPreferences(TWEAKS_PREFERENCES, MODE_PRIVATE);
+        final java.util.HashSet<String> hidden = new java.util.HashSet<String>(
+                prefs.getStringSet(TWEAK_HIDDEN_APPS, new java.util.HashSet<String>()));
+
+        final PackageManager pm = getPackageManager();
+        final Intent main = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
+        final List<ResolveInfo> apps = pm.queryIntentActivities(main, 0);
+        java.util.Collections.sort(apps, new ResolveInfo.DisplayNameComparator(pm));
+
+        final int count = apps.size();
+        final CharSequence[] labels = new CharSequence[count];
+        final String[] components = new String[count];
+        final boolean[] checked = new boolean[count];
+        for (int i = 0; i < count; i++) {
+            final ResolveInfo ri = apps.get(i);
+            labels[i] = ri.loadLabel(pm);
+            components[i] = new ComponentName(ri.activityInfo.packageName,
+                    ri.activityInfo.name).flattenToString();
+            checked[i] = hidden.contains(components[i]);
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.tweaks_hidden_apps)
+                .setMultiChoiceItems(labels, checked,
+                        new DialogInterface.OnMultiChoiceClickListener() {
+                    public void onClick(DialogInterface dialog, int which, boolean isChecked) {
+                        checked[which] = isChecked;
+                    }
+                })
+                .setNegativeButton(R.string.cancel_action, null)
+                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        final java.util.HashSet<String> result = new java.util.HashSet<String>();
+                        for (int i = 0; i < count; i++) {
+                            if (checked[i]) result.add(components[i]);
+                        }
+                        prefs.edit().putStringSet(TWEAK_HIDDEN_APPS, result).apply();
+                        applyTweaks();
+                    }
+                })
+                .show();
+    }
+
+    // Tweaks: drawer list without the hidden apps
+    private ArrayList<ApplicationInfo> filterHiddenApps(ArrayList<ApplicationInfo> apps) {
+        final java.util.Set<String> hidden = getSharedPreferences(TWEAKS_PREFERENCES,
+                MODE_PRIVATE).getStringSet(TWEAK_HIDDEN_APPS, null);
+        if (hidden == null || hidden.isEmpty() || apps == null) {
+            return apps;
+        }
+        final ArrayList<ApplicationInfo> result = new ArrayList<ApplicationInfo>(apps.size());
+        for (ApplicationInfo app : apps) {
+            final ComponentName cn = app.intent.getComponent();
+            if (cn == null || !hidden.contains(cn.flattenToString())) {
+                result.add(app);
+            }
+        }
+        return result;
     }
 
     // Tweaks: rebuild the workspace and drawer with the new grid
@@ -2546,7 +2633,9 @@ public final class Launcher extends Activity
             info.spanY = 1;
             // notify: the favorites observer reloads and binds the workspace
             LauncherModel.addItemToDatabase(this, info,
-                    LauncherSettings.Favorites.CONTAINER_DESKTOP, prefs.getInt("screen", 2),
+                    LauncherSettings.Favorites.CONTAINER_DESKTOP,
+                    prefs.getInt("screen", 2) < SCREEN_COUNT // Tweaks: fewer screens
+                            ? prefs.getInt("screen", 2) : DEFAULT_SCREEN,
                     prefs.getInt("x", 0), prefs.getInt("y", 0), true);
         } else if (appWidgetId != -1) {
             mAppWidgetHost.deleteAppWidgetId(appWidgetId);
@@ -2560,7 +2649,7 @@ public final class Launcher extends Activity
      * Implementation of the method from LauncherModel.Callbacks.
      */
     public void bindAllApplications(ArrayList<ApplicationInfo> apps) {
-        mAllAppsGrid.setApps(apps);
+        mAllAppsGrid.setApps(filterHiddenApps(apps)); // Tweaks: filterHiddenApps
     }
 
     /**
@@ -2571,7 +2660,7 @@ public final class Launcher extends Activity
     public void bindAppsAdded(ArrayList<ApplicationInfo> apps) {
         setLoadOnResume();
         removeDialog(DIALOG_CREATE_SHORTCUT);
-        mAllAppsGrid.addApps(apps);
+        mAllAppsGrid.addApps(filterHiddenApps(apps)); // Tweaks: filterHiddenApps
     }
 
     /**
@@ -2583,7 +2672,7 @@ public final class Launcher extends Activity
         setLoadOnResume();
         removeDialog(DIALOG_CREATE_SHORTCUT);
         mWorkspace.updateShortcuts(apps);
-        mAllAppsGrid.updateApps(apps);
+        mAllAppsGrid.updateApps(filterHiddenApps(apps)); // Tweaks: filterHiddenApps
     }
 
     /**

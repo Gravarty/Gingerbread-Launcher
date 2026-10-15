@@ -44,6 +44,8 @@
     <string name="tweaks_home_rows">"Startbildschirm: Zeilen"</string>
     <string name="tweaks_drawer_columns">"App-Drawer: Spalten"</string>
     <string name="tweaks_drawer_rows">"App-Drawer: Zeilen"</string>
+    <string name="tweaks_home_screens">"Startbildschirm: Seiten"</string>
+    <string name="tweaks_hidden_apps">"Apps im App-Drawer ausblenden"</string>
     <string name="tweaks_reset">"Standard"</string>
     <string name="add_folder" msgid="3521088587367839879">"Ordner"</string>
     <string name="add_clock" msgid="2337943840175865746">"Uhr"</string>
