@@ -31,6 +31,7 @@ class SymmetricalLinearTween {
 
     Handler mHandler;
     int mDuration;
+    private final int mBaseDuration; // Port: unscaled duration
     TweenCallback mCallback;
 
     boolean mRunning;
@@ -45,7 +46,7 @@ class SymmetricalLinearTween {
     public SymmetricalLinearTween(boolean initial, int duration, TweenCallback callback) {
         mValue = initial ? 1.0f : 0.0f;
         mDirection = initial;
-        mDuration = duration;
+        mDuration = mBaseDuration = duration;
         mCallback = callback;
         mHandler = new Handler();
     }
@@ -72,6 +73,7 @@ class SymmetricalLinearTween {
     public void start(boolean direction, long baseTime) {
         if (direction != mDirection) {
             if (!mRunning) {
+                mDuration = Utilities.scaleDuration(mBaseDuration); // Port: animation speed
                 mBase = baseTime;
                 mRunning = true;
                 mCallback.onTweenStarted();
