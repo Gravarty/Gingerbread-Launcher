@@ -35,6 +35,8 @@ public class IconCache {
     private static final int INITIAL_ICON_CACHE_CAPACITY = 50;
 
     private static class CacheEntry {
+        public Bitmap packIcon; // Tweaks: icon from the icon pack (or the normal one)
+        public boolean packLoaded;
         public Bitmap icon;
         public String title;
         public Bitmap titleBitmap;
@@ -81,6 +83,7 @@ public class IconCache {
         synchronized (mCache) {
             mCache.clear();
             mBubble = new Utilities.BubbleText(mContext); // Tweaks: font setting
+            mPack = null; // Tweaks: icon pack setting
         }
     }
 
@@ -96,7 +99,8 @@ public class IconCache {
 
             application.title = entry.title;
             application.titleBitmap = entry.titleBitmap;
-            application.iconBitmap = entry.icon;
+            application.iconBitmap = Launcher.ICON_PACK_EVERYWHERE // Tweaks
+                    ? packIconLocked(application.componentName, entry) : entry.icon;
         }
     }
 
@@ -110,7 +114,7 @@ public class IconCache {
             }
 
             CacheEntry entry = cacheLocked(component, resolveInfo);
-            return entry.icon;
+            return packIconLocked(component, entry); // Tweaks: home screen icon
         }
     }
 
@@ -121,7 +125,92 @@ public class IconCache {
             }
 
             CacheEntry entry = cacheLocked(component, resolveInfo);
+            return packIconLocked(component, entry); // Tweaks: home screen icon
+        }
+    }
+
+    /*
+     * Tweaks: icon packs in the common ADW/Nova format (appfilter.xml mapping components
+     * to drawables), e.g. Lawnicons. Apps the pack doesn't cover keep their icon. Used for
+     * the home screen, and with "everywhere" for all apps too.
+     */
+    private HashMap<String, String> mPack; // flattened component -> drawable name
+    private android.content.Context mPackContext;
+
+    static final String[] ICON_PACK_ACTIONS = { "org.adw.launcher.THEMES",
+            "com.novalauncher.THEME", "com.gau.go.launcherex.theme" };
+
+    private Bitmap packIconLocked(ComponentName component, CacheEntry entry) {
+        if (Launcher.ICON_PACK == null || component == null) {
             return entry.icon;
+        }
+        if (!entry.packLoaded) {
+            entry.packLoaded = true;
+            entry.packIcon = entry.icon;
+            final Drawable d = loadPackDrawable(component);
+            if (d != null) {
+                entry.packIcon = Utilities.createIconBitmap(d, mContext);
+            }
+        }
+        return entry.packIcon;
+    }
+
+    private Drawable loadPackDrawable(ComponentName component) {
+        if (mPack == null) {
+            mPack = new HashMap<String, String>();
+            try {
+                mPackContext = mContext.createPackageContext(Launcher.ICON_PACK, 0);
+                readAppFilter(mPackContext, mPack);
+            } catch (Exception e) {
+                android.util.Log.w("Launcher.IconCache", "icon pack: " + e);
+            }
+        }
+        final String name = mPack.get(component.flattenToString());
+        if (name == null || mPackContext == null) return null;
+        final android.content.res.Resources res = mPackContext.getResources();
+        final int id = res.getIdentifier(name, "drawable", Launcher.ICON_PACK);
+        if (id == 0) return null;
+        try {
+            return mPackContext.getDrawable(id);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static void readAppFilter(android.content.Context pack,
+            HashMap<String, String> out) throws Exception {
+        final android.content.res.Resources res = pack.getResources();
+        final int id = res.getIdentifier("appfilter", "xml", pack.getPackageName());
+        org.xmlpull.v1.XmlPullParser parser;
+        java.io.InputStream in = null;
+        if (id != 0) {
+            parser = res.getXml(id);
+        } else {
+            in = res.getAssets().open("appfilter.xml");
+            parser = org.xmlpull.v1.XmlPullParserFactory.newInstance().newPullParser();
+            parser.setInput(in, null);
+        }
+        try {
+            for (int type = parser.getEventType(); type != org.xmlpull.v1.XmlPullParser.END_DOCUMENT;
+                    type = parser.next()) {
+                if (type != org.xmlpull.v1.XmlPullParser.START_TAG
+                        || !"item".equals(parser.getName())) {
+                    continue;
+                }
+                final String component = parser.getAttributeValue(null, "component");
+                final String drawable = parser.getAttributeValue(null, "drawable");
+                if (component == null || drawable == null
+                        || !component.startsWith("ComponentInfo{")) {
+                    continue;
+                }
+                final ComponentName cn = ComponentName.unflattenFromString(
+                        component.substring(14, component.length() - 1));
+                if (cn != null && !out.containsKey(cn.flattenToString())) {
+                    out.put(cn.flattenToString(), drawable);
+                }
+            }
+        } finally {
+            if (in != null) in.close();
         }
     }
 

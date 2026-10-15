@@ -302,6 +302,11 @@ public final class Launcher extends Activity
     // Tweaks: shape of adaptive icons, index into Utilities.ICON_SHAPE_MASKS (0 = system)
     static final String TWEAK_ICON_SHAPE = "icon_shape";
     static int ICON_SHAPE = 0;
+    // Tweaks: icon pack (package name, null = none), on the home screen or everywhere
+    static final String TWEAK_ICON_PACK = "icon_pack";
+    static final String TWEAK_ICON_PACK_EVERYWHERE = "icon_pack_everywhere";
+    static String ICON_PACK = null;
+    static boolean ICON_PACK_EVERYWHERE = false;
     static final String TWEAK_HIDDEN_APPS = "hidden_apps"; // flattened ComponentNames
 
     // Tweaks
@@ -317,6 +322,8 @@ public final class Launcher extends Activity
         NO_BAR_BACKGROUNDS = prefs.getBoolean(TWEAK_NO_BAR_BACKGROUNDS, false);
         ICON_SHAPE = Math.max(0, Math.min(Utilities.ICON_SHAPE_MASKS.length - 1,
                 prefs.getInt(TWEAK_ICON_SHAPE, 0)));
+        ICON_PACK = prefs.getString(TWEAK_ICON_PACK, null);
+        ICON_PACK_EVERYWHERE = prefs.getInt(TWEAK_ICON_PACK_EVERYWHERE, 0) == 1;
         synchronized (sLock) {
             sScreen = Math.max(0, Math.min(sScreen, SCREEN_COUNT - 1));
         }
@@ -2486,6 +2493,11 @@ public final class Launcher extends Activity
                         R.string.tweaks_icon_shape_squircle,
                         R.string.tweaks_icon_shape_rounded_rect,
                         R.string.tweaks_icon_shape_teardrop, R.string.tweaks_icon_shape_square });
+                addCategory(R.string.tweaks_icon_pack);
+                addIconPack();
+                addChoice(R.string.tweaks_icon_pack_where, TWEAK_ICON_PACK_EVERYWHERE,
+                        new int[] { R.string.tweaks_icon_pack_home,
+                                R.string.tweaks_icon_pack_everywhere });
             } else if (page == R.string.tweaks_dock) {
                 addCategory(R.string.tweaks_category_dock_apps);
                 for (int i = 0; i < DOCK_KEYS.length; i++) {
@@ -2551,6 +2563,48 @@ public final class Launcher extends Activity
                     sIconsChanged = true; // the drawer labels are drawn with the font
                 }
             });
+        }
+
+        // Icon packs: the apps that offer one (ADW/Nova/GO format)
+        private void addIconPack() {
+            final PackageManager pm = getPackageManager();
+            final java.util.LinkedHashMap<String, CharSequence> packs =
+                    new java.util.LinkedHashMap<String, CharSequence>();
+            for (String action : IconCache.ICON_PACK_ACTIONS) {
+                for (ResolveInfo ri : pm.queryIntentActivities(new Intent(action), 0)) {
+                    if (!packs.containsKey(ri.activityInfo.packageName)) {
+                        packs.put(ri.activityInfo.packageName,
+                                ri.activityInfo.applicationInfo.loadLabel(pm));
+                    }
+                }
+            }
+            final String[] pkgs = new String[packs.size() + 1];
+            final CharSequence[] labels = new CharSequence[packs.size() + 1];
+            labels[0] = getString(R.string.tweaks_icon_pack_none);
+            int i = 1;
+            for (java.util.Map.Entry<String, CharSequence> e : packs.entrySet()) {
+                pkgs[i] = e.getKey();
+                labels[i++] = e.getValue();
+            }
+            final String current = mPrefs.getString(TWEAK_ICON_PACK, null);
+            final int[] selected = { 0 };
+            for (int j = 1; j < pkgs.length; j++) {
+                if (pkgs[j].equals(current)) selected[0] = j;
+            }
+            final View v = addItem(R.string.tweaks_icon_pack, labels[selected[0]]);
+            final TextView summary = (TextView) v.findViewById(R.id.settings_item_summary);
+            v.setOnClickListener(view -> new AlertDialog.Builder(this)
+                    .setTitle(R.string.tweaks_icon_pack)
+                    .setSingleChoiceItems(labels, selected[0], (dialog, which) -> {
+                        selected[0] = which;
+                        mPrefs.edit().putString(TWEAK_ICON_PACK, pkgs[which]).apply();
+                        sChanged = true;
+                        sIconsChanged = true;
+                        setSummary(summary, labels[which]);
+                        dialog.dismiss();
+                    })
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show());
         }
 
         // ListPreference style with named entries; the stored value is the index
