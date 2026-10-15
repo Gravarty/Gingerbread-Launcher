@@ -293,6 +293,9 @@ public final class Launcher extends Activity
         return b;
     }
     static boolean SWIPE_DOWN_NOTIFICATIONS = false;
+    // Tweaks: no black system bars, the wallpaper shows behind them
+    static final String TWEAK_NO_BAR_BACKGROUNDS = "no_bar_backgrounds";
+    static boolean NO_BAR_BACKGROUNDS = false;
     static final String TWEAK_HIDDEN_APPS = "hidden_apps"; // flattened ComponentNames
 
     // Tweaks
@@ -304,6 +307,7 @@ public final class Launcher extends Activity
         SCREEN_COUNT = Math.max(1, Math.min(5, prefs.getInt(TWEAK_HOME_SCREENS, 5)));
         DEFAULT_SCREEN = (SCREEN_COUNT - 1) / 2; // the middle one, 2 of 5 as in stock
         SWIPE_DOWN_NOTIFICATIONS = prefs.getBoolean(TWEAK_SWIPE_DOWN_NOTIFICATIONS, false);
+        NO_BAR_BACKGROUNDS = prefs.getBoolean(TWEAK_NO_BAR_BACKGROUNDS, false);
         synchronized (sLock) {
             sScreen = Math.max(0, Math.min(sScreen, SCREEN_COUNT - 1));
         }
@@ -429,6 +433,14 @@ public final class Launcher extends Activity
         checkForLocaleChange();
         setWallpaperDimension();
 
+        if (NO_BAR_BACKGROUNDS) { // Tweaks: transparent system bars
+            final android.view.Window window = getWindow();
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.setStatusBarColor(android.graphics.Color.TRANSPARENT);
+            window.setNavigationBarColor(android.graphics.Color.TRANSPARENT);
+            window.setStatusBarContrastEnforced(false);
+            window.setNavigationBarContrastEnforced(false);
+        }
         setContentView(R.layout.launcher);
         setupViews();
 
@@ -2411,6 +2423,9 @@ public final class Launcher extends Activity
                 addNumber(R.string.tweaks_rows, TWEAK_HOME_ROWS, 3, 8, 4, false);
                 addCategory(R.string.tweaks_category_screens);
                 addNumber(R.string.tweaks_screens, TWEAK_HOME_SCREENS, 1, 5, 5, false);
+                addCategory(R.string.tweaks_category_display);
+                addCheck(R.string.tweaks_no_bar_backgrounds,
+                        R.string.tweaks_no_bar_backgrounds_summary, TWEAK_NO_BAR_BACKGROUNDS);
                 addCategory(R.string.tweaks_category_gestures);
                 addCheck(R.string.tweaks_swipe_down_notifications,
                         R.string.tweaks_swipe_down_notifications_summary,

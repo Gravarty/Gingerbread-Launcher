@@ -46,6 +46,9 @@
     <string name="tweaks_dock_mail">"E-Mail"</string>
     <string name="tweaks_dock_camera">"Kamera"</string>
     <string name="tweaks_reset">"Standard"</string>
+    <string name="tweaks_category_display">"Darstellung"</string>
+    <string name="tweaks_no_bar_backgrounds">"Ohne schwarze Leisten"</string>
+    <string name="tweaks_no_bar_backgrounds_summary">"Hintergrundbild hinter Status- und Navigationsleiste anzeigen"</string>
     <string name="tweaks_category_grid">"Raster"</string>
     <string name="tweaks_category_screens">"Seiten"</string>
     <string name="tweaks_category_gestures">"Gesten"</string>

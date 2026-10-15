@@ -79,6 +79,9 @@
     <string name="tweaks_dock_mail">Email</string>
     <string name="tweaks_dock_camera">Camera</string>
     <string name="tweaks_reset">Default</string>
+    <string name="tweaks_category_display">Display</string>
+    <string name="tweaks_no_bar_backgrounds">Without black bars</string>
+    <string name="tweaks_no_bar_backgrounds_summary">Show the wallpaper behind the status and navigation bar</string>
     <string name="tweaks_category_grid">Grid</string>
     <string name="tweaks_category_screens">Pages</string>
     <string name="tweaks_category_gestures">Gestures</string>
