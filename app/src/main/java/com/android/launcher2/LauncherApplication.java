@@ -50,6 +50,8 @@ public class LauncherApplication extends Application {
         resolver.registerContentObserver(LauncherSettings.Favorites.CONTENT_URI, true,
                 mFavoritesObserver);
 
+        updateOwnWidgets();
+
         // Port: the "Power Control" widget no longer gets these as a manifest receiver
         final android.content.BroadcastReceiver powerWidget =
                 new android.content.BroadcastReceiver() {
@@ -79,6 +81,28 @@ public class LauncherApplication extends Application {
                 android.provider.Settings.System.SCREEN_BRIGHTNESS), false, brightness);
         resolver.registerContentObserver(android.provider.Settings.System.getUriFor(
                 android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE), false, brightness);
+    }
+
+    /**
+     * Port: an app update force-stops the package and the system drops the views of its
+     * widgets; the hosts show the initial layouts (no click actions, "Loading..."). The
+     * update broadcast that should refill them doesn't reliably arrive, so the widgets
+     * bundled with the launcher (search, clock, power control, weather) are updated
+     * whenever its process starts.
+     */
+    private void updateOwnWidgets() {
+        final android.appwidget.AppWidgetManager manager =
+                android.appwidget.AppWidgetManager.getInstance(this);
+        final java.util.List<android.appwidget.AppWidgetProviderInfo> providers =
+                manager.getInstalledProviders();
+        for (android.appwidget.AppWidgetProviderInfo info : providers) {
+            if (!getPackageName().equals(info.provider.getPackageName())) continue;
+            final int[] ids = manager.getAppWidgetIds(info.provider);
+            if (ids.length == 0) continue;
+            sendBroadcast(new Intent(android.appwidget.AppWidgetManager.ACTION_APPWIDGET_UPDATE)
+                    .setComponent(info.provider)
+                    .putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_IDS, ids));
+        }
     }
 
     /**

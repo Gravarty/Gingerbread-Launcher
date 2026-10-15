@@ -49,6 +49,10 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             // 5 min tolerance, the 30 min updates aren't exact
             if (now - prefs.getLong(key(id, "updated"), 0) >= interval - 5 * 60000L) {
                 due.add(id);
+            } else if (prefs.contains(key(id, "temp"))) {
+                // not due: show the last data again (after an app update or a reboot the
+                // widget starts with its initial layout, "Loading...")
+                manager.updateAppWidget(id, build(context, id, State.READY));
             }
         }
         final int[] dueIds = new int[due.size()];
