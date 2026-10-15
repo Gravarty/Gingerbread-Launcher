@@ -175,6 +175,8 @@ public class AllApps3D extends GLSurfaceView
      * plus where that space sits on this screen.
      */
     static final class Layout {
+        static final float BEND_ANGLE = 47.f * (3.14f / 180.f); // vertex shader
+
         // Original Nexus One drawer height below the status bar, used to scale touch drags.
         private static final float REF_HEIGHT_PORTRAIT = 762f;
         private static final float REF_HEIGHT_LANDSCAPE = 442f;
@@ -190,6 +192,7 @@ public class AllApps3D extends GLSurfaceView
         final float colWidth;       // virtual px, 120 on the original screen
         final float rowHeight;
         final float bendY1, bendY2;
+        final float bendAngle;      // radians, see below
         final float yoff;           // drawFrontGrid() row 0 position
         final float touchCenterY;   // initTouchState() center, virtual px from the top
         final float refHeightPx;    // touch drag normalisation
@@ -220,6 +223,13 @@ public class AllApps3D extends GLSurfaceView
                 rowHeight = 120.f + 25.f;
                 bendY1 = 120.f;
                 bendY2 = h - 80.f;                      // 680 at the original 760
+                // Port: the bent ends recede at 47 degrees. Their horizon lies at
+                // 2 / tan(47) of the half width from the center; on screens taller than the
+                // original that is inside the screen and the rows there collapse into a
+                // line with darkness above. A flatter angle keeps the horizon where it
+                // was on the original screen (47 degrees at 760 / 480).
+                bendAngle = Math.min(BEND_ANGLE, (float) Math.atan(
+                        Math.tan(BEND_ANGLE) * (760.f / 480.f) / (h / w)));
                 touchCenterY = h * 0.5f;
                 refHeightPx = REF_HEIGHT_PORTRAIT * k;
             } else {
@@ -230,6 +240,7 @@ public class AllApps3D extends GLSurfaceView
                 rowHeight = 120.f + 25.f - 12.f;
                 bendY1 = 40.f;
                 bendY2 = h - 40.f;
+                bendAngle = BEND_ANGLE;
                 touchCenterY = h * 0.47f;
                 refHeightPx = REF_HEIGHT_LANDSCAPE * k;
             }
@@ -2059,6 +2070,8 @@ public class AllApps3D extends GLSurfaceView
                         1, vpPosition, 0);
                 GLES20.glUniform2fv(GLES20.glGetUniformLocation(program, "UNI_BendPos"),
                         1, vpBendPos, 0);
+                GLES20.glUniform1f(GLES20.glGetUniformLocation(program, "UNI_BendAngle"),
+                        layout.bendAngle); // Port
                 GLES20.glUniform4fv(GLES20.glGetUniformLocation(program, "UNI_ScaleOffset"),
                         1, vpScaleOffset, 0);
                 GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(program, "UNI_MVP"),
@@ -2270,6 +2283,7 @@ public class AllApps3D extends GLSurfaceView
                         "uniform vec2 UNI_ImgSize;\n" +
                         "uniform vec4 UNI_Position;\n" +
                         "uniform vec2 UNI_BendPos;\n" +
+                        "uniform float UNI_BendAngle;\n" + // Port: was 47 degrees
                         "uniform vec4 UNI_ScaleOffset;\n" +
                         "attribute vec2 ATTRIB_position;\n" +
                         "varying vec4 varColor;\n" +
@@ -2280,7 +2294,7 @@ public class AllApps3D extends GLSurfaceView
 
                         "  float bendY1 = UNI_BendPos.x;\n" +
                         "  float bendY2 = UNI_BendPos.y;\n" +
-                        "  float bendAngle = 47.0 * (3.14 / 180.0);\n" +
+                        "  float bendAngle = UNI_BendAngle;\n" +
                         "  float bendDistance = bendY1 * 0.4;\n" +
                         "  float distanceDimLevel = 0.6;\n" +
 
