@@ -69,6 +69,11 @@ public class DragLayer extends FrameLayout {
     private float mSwipeDownX, mSwipeDownY;
     private android.view.VelocityTracker mSwipeVelocity;
 
+    /** Tweaks: the touch became a long press (previews, drag, menu): no swipe up. */
+    void cancelAllAppsSwipe() {
+        mAllAppsSwipeCandidate = false;
+    }
+
     private boolean interceptAllAppsSwipe(MotionEvent ev) {
         if (!Launcher.SWIPE_UP_ALL_APPS) return false;
         final Launcher launcher = (Launcher) getContext();

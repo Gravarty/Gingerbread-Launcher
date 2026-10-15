@@ -1898,6 +1898,7 @@ public final class Launcher extends Activity
     }
 
     public boolean onLongClick(View v) {
+        getDragLayer().cancelAllAppsSwipe(); // Tweaks: a long press is no swipe up
         // R.id values are no longer compile-time constants, so this can't be a switch.
         final int id = v.getId();
         if (id == R.id.previous_screen || id == R.id.next_screen || id == R.id.all_apps_button) {
