@@ -322,6 +322,11 @@ public final class Launcher extends Activity
         }
     }
 
+    /** Port: Gingerbread's system font (Droid Sans) instead of today's system font. */
+    static boolean useDroidSans(Context context) {
+        return true;
+    }
+
     static final int DIALOG_CREATE_SHORTCUT = 1;
     static final int DIALOG_RENAME_FOLDER = 2;
 
@@ -422,6 +427,9 @@ public final class Launcher extends Activity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (useDroidSans(this)) { // Port: Gingerbread's font for all launcher texts
+            getTheme().applyStyle(R.style.DroidSansFont, true);
+        }
 
         LauncherApplication app = ((LauncherApplication)getApplication());
         mModel = app.setLauncher(this);

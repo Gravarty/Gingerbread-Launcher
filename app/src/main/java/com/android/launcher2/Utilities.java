@@ -407,7 +407,8 @@ final class Utilities {
             mTextWidth = cellWidth - paddingLeft - paddingRight;
 
             TextPaint textPaint = mTextPaint = new TextPaint();
-            textPaint.setTypeface(Typeface.DEFAULT);
+            textPaint.setTypeface(Launcher.useDroidSans(context) // Port: Gingerbread's font
+                    ? context.getResources().getFont(R.font.droid_sans) : Typeface.DEFAULT);
             textPaint.setTextSize(13*scale);
             textPaint.setColor(0xffffffff);
             textPaint.setAntiAlias(true);

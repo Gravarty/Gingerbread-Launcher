@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Port: Gingerbread's system font, Droid Sans (AOSP frameworks/base/data/fonts,
+     android-2.3.7_r1, Apache 2.0) -->
+<font-family xmlns:android="http://schemas.android.com/apk/res/android">
+    <font android:fontStyle="normal" android:fontWeight="400"
+        android:font="@font/droid_sans_regular" />
+    <font android:fontStyle="normal" android:fontWeight="700"
+        android:font="@font/droid_sans_bold" />
+</font-family>
