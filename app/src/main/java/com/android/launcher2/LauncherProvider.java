@@ -747,8 +747,21 @@ public class LauncherProvider extends ContentProvider {
         }
 
         private boolean addSearchWidget(SQLiteDatabase db, ContentValues values) {
-            ComponentName cn = getSearchWidgetProvider();
-            return addAppWidget(db, values, cn, 4, 1);
+            // Port: the global search app's widget was QSB's; use the bundled port of it.
+            ComponentName cn = new ComponentName(mContext,
+                    com.android.quicksearchbox.SearchWidgetProvider.class);
+            if (addAppWidget(db, values, cn, 4, 1)) {
+                return true;
+            }
+            // Port: binding needs the user's permission on modern Android. Remember the
+            // place; the Launcher asks for the permission and adds it there.
+            mContext.getSharedPreferences(Launcher.PENDING_SEARCH_WIDGET, Context.MODE_PRIVATE)
+                    .edit()
+                    .putInt("screen", values.getAsInteger(Favorites.SCREEN))
+                    .putInt("x", values.getAsInteger(Favorites.CELLX))
+                    .putInt("y", values.getAsInteger(Favorites.CELLY))
+                    .apply();
+            return false;
         }
 
         private boolean addClockWidget(SQLiteDatabase db, ContentValues values) {

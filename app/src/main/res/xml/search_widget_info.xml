@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- From AOSP QuickSearchBox (android-2.3.7_r1). Port: the corpus configure activity
+     is not included; targetCell* added for modern launchers. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="294dip"
+    android:minHeight="72dip"
+    android:targetCellWidth="4"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/search_widget"
+    android:widgetCategory="home_screen">
+</appwidget-provider>

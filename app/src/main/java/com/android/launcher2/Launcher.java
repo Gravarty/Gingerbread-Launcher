@@ -118,6 +118,10 @@ public final class Launcher extends Activity
     private static final int REQUEST_PICK_LIVE_FOLDER = 8;
     private static final int REQUEST_PICK_APPWIDGET = 9;
     private static final int REQUEST_PICK_WALLPAPER = 10;
+    // Port: permission to bind the default search widget (see LauncherProvider)
+    private static final int REQUEST_BIND_SEARCH_WIDGET = 11;
+    static final String PENDING_SEARCH_WIDGET = "launcher.pending_search_widget";
+    private int mPendingSearchWidgetId = -1;
 
     static final String EXTRA_SHORTCUT_DUPLICATE = "duplicate";
 
@@ -567,6 +571,11 @@ public final class Launcher extends Activity
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         mWaitingForResult = false;
+
+        if (requestCode == REQUEST_BIND_SEARCH_WIDGET) {
+            completeBindSearchWidget(resultCode == RESULT_OK);
+            return;
+        }
 
         // The pattern used here is that a user PICKs a specific application,
         // which, depending on the target, might need to CREATE the actual target.
@@ -2478,6 +2487,54 @@ public final class Launcher extends Activity
         }
 
         mWorkspaceLoading = false;
+
+        bindPendingSearchWidget();
+    }
+
+    /**
+     * Port: the default search widget couldn't be bound when the default workspace was
+     * created, because a non-system launcher needs the user's permission. Ask for it once.
+     */
+    private void bindPendingSearchWidget() {
+        final android.content.SharedPreferences prefs =
+                getSharedPreferences(PENDING_SEARCH_WIDGET, MODE_PRIVATE);
+        if (!prefs.contains("screen") || mPendingSearchWidgetId != -1 || mWaitingForResult) {
+            return;
+        }
+        final ComponentName provider = new ComponentName(this,
+                com.android.quicksearchbox.SearchWidgetProvider.class);
+        mPendingSearchWidgetId = mAppWidgetHost.allocateAppWidgetId();
+        if (mAppWidgetManager.bindAppWidgetIdIfAllowed(mPendingSearchWidgetId, provider)) {
+            completeBindSearchWidget(true);
+            return;
+        }
+        final Intent intent = new Intent(AppWidgetManager.ACTION_APPWIDGET_BIND);
+        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, mPendingSearchWidgetId);
+        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, provider);
+        try {
+            startActivityForResult(intent, REQUEST_BIND_SEARCH_WIDGET);
+        } catch (ActivityNotFoundException e) {
+            completeBindSearchWidget(false);
+        }
+    }
+
+    private void completeBindSearchWidget(boolean bound) {
+        final android.content.SharedPreferences prefs =
+                getSharedPreferences(PENDING_SEARCH_WIDGET, MODE_PRIVATE);
+        final int appWidgetId = mPendingSearchWidgetId;
+        mPendingSearchWidgetId = -1;
+        if (bound && appWidgetId != -1) {
+            final LauncherAppWidgetInfo info = new LauncherAppWidgetInfo(appWidgetId);
+            info.spanX = 4;
+            info.spanY = 1;
+            // notify: the favorites observer reloads and binds the workspace
+            LauncherModel.addItemToDatabase(this, info,
+                    LauncherSettings.Favorites.CONTAINER_DESKTOP, prefs.getInt("screen", 2),
+                    prefs.getInt("x", 0), prefs.getInt("y", 0), true);
+        } else if (appWidgetId != -1) {
+            mAppWidgetHost.deleteAppWidgetId(appWidgetId);
+        }
+        prefs.edit().clear().apply();
     }
 
     /**
