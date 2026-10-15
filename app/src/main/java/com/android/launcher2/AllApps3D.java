@@ -24,11 +24,11 @@
  *  - The vertex shader (PVCurve), the fixed function fragment programs, the program store
  *    and RS's setupProjectionNormalized() projection are reproduced exactly.
  *  - All layout constants are in pixels of the original 480px wide hdpi screen. They are
- *    kept and drawn in a "virtual" 480px wide (480px high in landscape) coordinate space
- *    that is scaled to the screen, inside the area not covered by system bars.
- *  - Only the parts that depended on the Nexus One screen are generalised: rows per page
- *    follow the screen height (4 at the original 480x762), landscape columns follow the
- *    width (6 at 800), the bottom bend sits at the same distance from the edge, and
+ *    kept and drawn in a "virtual" coordinate space at the original physical size
+ *    (1 virtual px = 1 hdpi px), inside the area not covered by system bars.
+ *  - Only the parts that depended on the Nexus One screen are generalised: columns and
+ *    rows follow the screen size (4x4 at the original 480x762, 6x3 in landscape), the
+ *    grid is centered, the bottom bend sits at the same distance from the edge, and
  *    touch drag is normalised to the original screen height so scrolling still follows
  *    the finger. Texture magnification is linear since textures are no longer drawn 1:1.
  */
@@ -181,11 +181,10 @@ public class AllApps3D extends GLSurfaceView
 
         final boolean portrait;
         final float k;              // screen px per virtual px
-        final float w, h;           // virtual size of the drawer content area
+        final float w, h;           // virtual size of the icon grid area
         final Rect content;         // drawer content area in view px
-        // Tweaks: icon grid area (letterboxed inside content when cols/rows are set)
-        final Rect grid;
-        final float contentW, contentH; // virtual size of content (home button)
+        final Rect grid;            // icon grid area in view px
+        final float contentW, contentH; // virtual size of the content area (home button)
         final int surfaceHeight;    // view px
         final int cols, rows;
         final float rowHeight;
@@ -194,7 +193,8 @@ public class AllApps3D extends GLSurfaceView
         final float touchCenterY;   // initTouchState() center, virtual px from the top
         final float refHeightPx;    // touch drag normalisation
 
-        Layout(int viewWidth, int viewHeight, Rect insets, int tweakCols, int tweakRows) {
+        Layout(int viewWidth, int viewHeight, Rect insets, float density,
+                int tweakCols, int tweakRows) {
             content = new Rect(insets.left, insets.top,
                     Math.max(insets.left + 1, viewWidth - insets.right),
                     Math.max(insets.top + 1, viewHeight - insets.bottom));
@@ -202,45 +202,45 @@ public class AllApps3D extends GLSurfaceView
             final int cw = content.width();
             final int ch = content.height();
             portrait = cw < ch;
+
+            // One virtual px is one px at the Nexus One's hdpi density (1.5), so icons,
+            // labels and spacing keep their original physical size.
+            float kk = density / 1.5f;
             grid = new Rect(content);
-            if (portrait && (tweakCols > 0 || tweakRows > 0)) {
-                // Tweaks: 120px columns and 145px rows as in the original, the grid is
-                // scaled to fit and centered. Rows: h = rows * 145 + 180 keeps the original
-                // bends (120 / h - 80, 760 for 4 rows).
-                final int c = tweakCols > 0 ? tweakCols : Defines.COLUMNS_PER_PAGE_PORTRAIT;
-                float kk = cw / (120f * c);
-                if (tweakRows > 0) {
-                    kk = Math.min(kk, ch / (tweakRows * 145f + 180f));
+
+            if (portrait) {
+                // As many 120px columns as fit (4 at the original 480px), centered.
+                int c = Math.max(1, (int) (cw / kk / 120.f));
+                int gh = ch;
+                if (tweakCols > 0) {
+                    // Tweaks: fixed columns, the grid is scaled to fill the width
+                    c = tweakCols;
+                    kk = cw / (120.f * c);
                 }
-                final int gw = Math.round(120f * c * kk);
-                final int gh = tweakRows > 0 ? Math.round((tweakRows * 145f + 180f) * kk) : ch;
-                grid.left = content.left + (cw - gw) / 2;
-                grid.top = content.top + (ch - gh) / 2;
-                grid.right = grid.left + gw;
-                grid.bottom = grid.top + gh;
+                if (tweakRows > 0) {
+                    // Tweaks: fixed rows; h = rows * 145 + 180 keeps the original bends
+                    // (120 / h - 80, 760 for 4 rows). Scaled down to fit and centered.
+                    kk = Math.min(kk, ch / (tweakRows * 145.f + 180.f));
+                    gh = Math.round((tweakRows * 145.f + 180.f) * kk);
+                }
                 k = kk;
-                w = 120f * c;
-                h = gh / k;
                 cols = c;
-                rowHeight = 120.f + 25.f;
-                bendY1 = 120.f;
-                bendY2 = h - 80.f;
-                touchCenterY = h * 0.5f;
-                refHeightPx = REF_HEIGHT_PORTRAIT * k;
-            } else if (portrait) {
-                k = cw / 480f;
-                w = 480f;
-                h = ch / k;
-                cols = Defines.COLUMNS_PER_PAGE_PORTRAIT;
+                w = 120.f * cols;
+                h = gh / k;
+                final int gw = Math.round(w * k);
+                grid.left = content.left + (cw - gw) / 2;
+                grid.right = grid.left + gw;
+                grid.top = content.top + (ch - gh) / 2;
+                grid.bottom = grid.top + gh;
                 rowHeight = 120.f + 25.f;
                 bendY1 = 120.f;
                 bendY2 = h - 80.f;                      // 680 at the original 760
                 touchCenterY = h * 0.5f;
                 refHeightPx = REF_HEIGHT_PORTRAIT * k;
             } else {
-                k = ch / 480f;
-                h = 480f;
+                k = kk;
                 w = cw / k;
+                h = ch / k;
                 cols = Math.max(1, (int) ((w - 80.f) / 120.f)); // 6 at the original 800
                 rowHeight = 120.f + 25.f - 12.f;
                 bendY1 = 40.f;
@@ -248,11 +248,11 @@ public class AllApps3D extends GLSurfaceView
                 touchCenterY = h * 0.47f;
                 refHeightPx = REF_HEIGHT_LANDSCAPE * k;
             }
+            contentW = cw / k;
+            contentH = ch / k;
             // 4 rows portrait / 3 rows landscape on the original screen
             rows = (portrait && tweakRows > 0) ? tweakRows // Tweaks
                     : Math.max(1, Math.round((bendY2 - bendY1) / rowHeight));
-            contentW = cw / k;
-            contentH = ch / k;
             // 0.5h + 1.5 rows portrait, 0.47h + 1.0 row landscape on the original screen
             yoff = (portrait ? 0.5f : 0.47f) * h + ((rows - 1) * 0.5f) * rowHeight;
         }
@@ -308,12 +308,12 @@ public class AllApps3D extends GLSurfaceView
     }
 
     private void updateLayout(int w, int h) {
-        // Tweaks: drawer grid from the launcher settings (0 = stock)
+        // Tweaks: drawer grid from the launcher settings (0 = automatic, stock)
         final android.content.SharedPreferences prefs = getContext().getSharedPreferences(
                 Launcher.TWEAKS_PREFERENCES, Context.MODE_PRIVATE);
-        final int cols = prefs.getInt(Launcher.TWEAK_DRAWER_COLUMNS, 0);
         mLayout = new Layout(w, h, mContentInsets,
-                cols == Defines.COLUMNS_PER_PAGE_PORTRAIT ? 0 : cols,
+                getResources().getDisplayMetrics().density,
+                prefs.getInt(Launcher.TWEAK_DRAWER_COLUMNS, 0),
                 prefs.getInt(Launcher.TWEAK_DRAWER_ROWS, 0));
         mColumnsPerPage = mLayout.cols;
         mRowsPerPage = mLayout.rows;
@@ -1685,7 +1685,7 @@ public class AllApps3D extends GLSurfaceView
                 final Params params = mRenderer.params;
                 setColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-                // Tweaks: content size instead of getWidth()/getHeight() (same when stock)
+                // Port: the home button uses the whole content area, the icons the grid area.
                 float w = mRenderer.layout.contentW;
                 float h = mRenderer.layout.contentH;
 
@@ -1995,8 +1995,8 @@ public class AllApps3D extends GLSurfaceView
                 vpPosition[3] = 0.f;
                 vpBendPos[0] = l.bendY1;
                 vpBendPos[1] = l.bendY2;
-                // 2/480 in the original: maps the 480 virtual px across the projection's
-                // [-1, 1]. Tweaks: the virtual width is 120 * columns, so scale by it.
+                // 2/480 in the original: maps the 480px wide screen onto the projection's
+                // [-1, 1]. The virtual grid width/height varies with the screen now.
                 vpScaleOffset[0] = 2.f / (l.portrait ? w : h);
                 vpScaleOffset[1] = l.portrait ? 0 : 1.f;
                 vpScaleOffset[2] = -(w / 2) - 0.25f;
@@ -2095,7 +2095,6 @@ public class AllApps3D extends GLSurfaceView
                 mQuad.clear();
                 mQuad.put(q).position(0);
 
-                // Tweaks: the home button uses the whole content area, not the grid area
                 final Layout l = layout;
                 GLES20.glViewport(l.content.left, l.surfaceHeight - l.content.bottom,
                         l.content.width(), l.content.height());

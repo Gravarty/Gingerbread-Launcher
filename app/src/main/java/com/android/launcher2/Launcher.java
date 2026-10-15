@@ -2170,9 +2170,9 @@ public final class Launcher extends Activity
         final int[] homeRows = addTweakRow(layout,
                 R.string.tweaks_home_rows, 3, 8, prefs.getInt(TWEAK_HOME_ROWS, 4));
         final int[] drawerColumns = addTweakRow(layout,
-                R.string.tweaks_drawer_columns, 3, 7, prefs.getInt(TWEAK_DRAWER_COLUMNS, 4));
+                R.string.tweaks_drawer_columns, 2, 7, prefs.getInt(TWEAK_DRAWER_COLUMNS, 0));
         final int[] drawerRows = addTweakRow(layout,
-                R.string.tweaks_drawer_rows, 0, 8, prefs.getInt(TWEAK_DRAWER_ROWS, 0));
+                R.string.tweaks_drawer_rows, 2, 8, prefs.getInt(TWEAK_DRAWER_ROWS, 0));
 
         new AlertDialog.Builder(this)
                 .setTitle(R.string.group_tweaks)
@@ -2201,7 +2201,10 @@ public final class Launcher extends Activity
     // Tweaks: "label  [-] value [+]" row; returns the live value holder
     private int[] addTweakRow(LinearLayout parent, int label, final int min, final int max,
             int value) {
-        final int[] holder = new int[] { Math.max(min, Math.min(max, value)) };
+        // Values below min mean "Auto" (0) for the drawer settings; min 3 = no auto
+        final boolean auto = min < 3;
+        final int lowest = auto ? 0 : min;
+        final int[] holder = new int[] { value < min ? lowest : Math.min(max, value) };
         final float density = getResources().getDisplayMetrics().density;
 
         final LinearLayout row = new LinearLayout(this);
@@ -2224,19 +2227,19 @@ public final class Launcher extends Activity
         final Runnable update = new Runnable() {
             public void run() {
                 valueView.setText(holder[0] == 0 ? "Auto" : String.valueOf(holder[0]));
-                minus.setEnabled(holder[0] > min);
+                minus.setEnabled(holder[0] > lowest);
                 plus.setEnabled(holder[0] < max);
             }
         };
         minus.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                if (holder[0] > min) holder[0]--;
+                holder[0] = holder[0] > min ? holder[0] - 1 : lowest;
                 update.run();
             }
         });
         plus.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                if (holder[0] < max) holder[0]++;
+                holder[0] = holder[0] < min ? min : Math.min(max, holder[0] + 1);
                 update.run();
             }
         });
