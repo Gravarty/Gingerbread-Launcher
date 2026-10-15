@@ -54,7 +54,6 @@ import java.util.List;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParser;
 
-import com.android.internal.util.XmlUtils;
 import com.android.launcher2.LauncherSettings.Favorites;
 
 import com.android.launcher.R;
@@ -67,7 +66,7 @@ public class LauncherProvider extends ContentProvider {
     
     private static final int DATABASE_VERSION = 8;
 
-    static final String AUTHORITY = "com.android.launcher2.settings";
+    static final String AUTHORITY = "com.gravarty.launcher2.settings";
     
     static final String TABLE_FAVORITES = "favorites";
     static final String PARAMETER_NOTIFY = "notify";
@@ -592,15 +591,15 @@ public class LauncherProvider extends ContentProvider {
                         db.update(TABLE_FAVORITES, values, updateWhere, null);
 
                         if (favoriteType == Favorites.ITEM_TYPE_WIDGET_CLOCK) {
-                            appWidgetManager.bindAppWidgetId(appWidgetId,
+                            appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId,
                                     new ComponentName("com.android.alarmclock",
                                     "com.android.alarmclock.AnalogAppWidgetProvider"));
                         } else if (favoriteType == Favorites.ITEM_TYPE_WIDGET_PHOTO_FRAME) {
-                            appWidgetManager.bindAppWidgetId(appWidgetId,
+                            appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId,
                                     new ComponentName("com.android.camera",
                                     "com.android.camera.PhotoAppWidgetProvider"));
                         } else if (favoriteType == Favorites.ITEM_TYPE_WIDGET_SEARCH) {
-                            appWidgetManager.bindAppWidgetId(appWidgetId,
+                            appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId,
                                     getSearchWidgetProvider());
                         }
                     } catch (RuntimeException ex) {
@@ -634,7 +633,7 @@ public class LauncherProvider extends ContentProvider {
             try {
                 XmlResourceParser parser = mContext.getResources().getXml(R.xml.default_workspace);
                 AttributeSet attrs = Xml.asAttributeSet(parser);
-                XmlUtils.beginDocument(parser, TAG_FAVORITES);
+                beginDocument(parser, TAG_FAVORITES);
 
                 final int depth = parser.getDepth();
 
@@ -804,11 +803,17 @@ public class LauncherProvider extends ContentProvider {
                 values.put(Favorites.SPANX, spanX);
                 values.put(Favorites.SPANY, spanY);
                 values.put(Favorites.APPWIDGET_ID, appWidgetId);
+                // Modern Android: binding needs BIND_APPWIDGET, which only the user can grant
+                // to a non-system launcher. Skip the widget if binding is not allowed.
+                if (!appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, cn)) {
+                    mAppWidgetHost.deleteAppWidgetId(appWidgetId);
+                    Log.w(TAG, "Not allowed to bind default widget " + cn);
+                    return false;
+                }
+
                 db.insert(TABLE_FAVORITES, null, values);
 
                 allocatedAppWidgets = true;
-                
-                appWidgetManager.bindAppWidgetId(appWidgetId, cn);
             } catch (RuntimeException ex) {
                 Log.e(TAG, "Problem allocating appWidgetId", ex);
             }
@@ -854,6 +859,25 @@ public class LauncherProvider extends ContentProvider {
         }
     }
     
+    // Replacement for the hidden com.android.internal.util.XmlUtils.beginDocument()
+    static final void beginDocument(XmlPullParser parser, String firstElementName)
+            throws XmlPullParserException, IOException {
+        int type;
+        while ((type = parser.next()) != XmlPullParser.START_TAG
+                && type != XmlPullParser.END_DOCUMENT) {
+            ;
+        }
+
+        if (type != XmlPullParser.START_TAG) {
+            throw new XmlPullParserException("No start tag found");
+        }
+
+        if (!parser.getName().equals(firstElementName)) {
+            throw new XmlPullParserException("Unexpected start tag: found " + parser.getName() +
+                    ", expected " + firstElementName);
+        }
+    }
+
     /**
      * Build a query string that will match any row where the column matches
      * anything in the values list.

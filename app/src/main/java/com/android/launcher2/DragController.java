@@ -61,7 +61,7 @@ public class DragController {
 
     private Context mContext;
     private Handler mHandler;
-    private final Vibrator mVibrator = new Vibrator();
+    private final Vibrator mVibrator;
 
     // temporaries to avoid gc thrash
     private Rect mRectTemp = new Rect();
@@ -152,6 +152,7 @@ public class DragController {
      */
     public DragController(Context context) {
         mContext = context;
+        mVibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
         mHandler = new Handler();
         mScrollZone = context.getResources().getDimensionPixelSize(R.dimen.scroll_zone);
     }

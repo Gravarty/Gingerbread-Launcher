@@ -16,13 +16,10 @@
 
 package com.android.launcher2;
 
-import com.android.common.Search;
-
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.SearchManager;
-import android.app.StatusBarManager;
 import android.app.WallpaperManager;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
@@ -51,7 +48,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Parcelable;
 import android.os.SystemClock;
-import android.os.SystemProperties;
 import android.provider.LiveFolders;
 import android.text.Selection;
 import android.text.SpannableStringBuilder;
@@ -1091,7 +1087,7 @@ public final class Launcher extends Activity
         }
         if (appSearchData == null) {
             appSearchData = new Bundle();
-            appSearchData.putString(Search.SOURCE, "launcher-search");
+            appSearchData.putString("source" /* com.android.common.Search.SOURCE */, "launcher-search");
         }
 
         final SearchManager searchManager =
@@ -1121,7 +1117,7 @@ public final class Launcher extends Activity
                 .setIcon(android.R.drawable.ic_search_category_default)
                 .setAlphabeticShortcut(SearchManager.MENU_KEY);
         menu.add(0, MENU_NOTIFICATIONS, 0, R.string.menu_notifications)
-                .setIcon(com.android.internal.R.drawable.ic_menu_notifications)
+                .setIcon(getResources().getIdentifier("ic_menu_notifications", "drawable", "android"))
                 .setAlphabeticShortcut('N');
 
         final Intent settings = new Intent(android.provider.Settings.ACTION_SETTINGS);
@@ -1360,9 +1356,14 @@ public final class Launcher extends Activity
     }
 
     private void showNotifications() {
-        final StatusBarManager statusBar = (StatusBarManager) getSystemService(STATUS_BAR_SERVICE);
+        // StatusBarManager is hidden API; expand() became expandNotificationsPanel() in API 17.
+        final Object statusBar = getSystemService("statusbar");
         if (statusBar != null) {
-            statusBar.expand();
+            try {
+                statusBar.getClass().getMethod("expandNotificationsPanel").invoke(statusBar);
+            } catch (Exception e) {
+                Log.w(TAG, "Unable to expand the notification panel", e);
+            }
         }
     }
 
@@ -1401,12 +1402,6 @@ public final class Launcher extends Activity
             switch (event.getKeyCode()) {
                 case KeyEvent.KEYCODE_HOME:
                     return true;
-                case KeyEvent.KEYCODE_VOLUME_DOWN:
-                    if (SystemProperties.getInt("debug.launcher2.dumpstate", 0) != 0) {
-                        dumpState();
-                        return true;
-                    }
-                    break;
             }
         } else if (event.getAction() == KeyEvent.ACTION_UP) {
             switch (event.getKeyCode()) {
@@ -1574,28 +1569,15 @@ public final class Launcher extends Activity
     }
 
     public boolean onLongClick(View v) {
-        switch (v.getId()) {
-            case R.id.previous_screen:
-                if (!isAllAppsVisible()) {
-                    mWorkspace.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS,
-                            HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING);
-                    showPreviews(v);
-                }
-                return true;
-            case R.id.next_screen:
-                if (!isAllAppsVisible()) {
-                    mWorkspace.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS,
-                            HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING);
-                    showPreviews(v);
-                }
-                return true;
-            case R.id.all_apps_button:
-                if (!isAllAppsVisible()) {
-                    mWorkspace.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS,
-                            HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING);
-                    showPreviews(v);
-                }
-                return true;
+        // R.id values are no longer compile-time constants, so this can't be a switch.
+        final int id = v.getId();
+        if (id == R.id.previous_screen || id == R.id.next_screen || id == R.id.all_apps_button) {
+            if (!isAllAppsVisible()) {
+                mWorkspace.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS,
+                        HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING);
+                showPreviews(v);
+            }
+            return true;
         }
 
         if (isWorkspaceLocked()) {

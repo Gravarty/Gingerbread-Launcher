@@ -30,7 +30,6 @@ import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.graphics.RectF;
-import android.graphics.TableMaskFilter;
 import android.graphics.Typeface;
 import android.text.Layout.Alignment;
 import android.text.StaticLayout;
@@ -243,14 +242,24 @@ final class Utilities {
 
         sBlurPaint.setMaskFilter(new BlurMaskFilter(5 * density, BlurMaskFilter.Blur.NORMAL));
         sGlowColorPressedPaint.setColor(0xffffc300);
-        sGlowColorPressedPaint.setMaskFilter(TableMaskFilter.CreateClipTable(0, 30));
+        // TableMaskFilter.CreateClipTable(0, 30) is hidden API: alpha 0..30 -> 0..255 (clamped)
+        sGlowColorPressedPaint.setColorFilter(createClipTableFilter(0, 30));
         sGlowColorFocusedPaint.setColor(0xffff8e00);
-        sGlowColorFocusedPaint.setMaskFilter(TableMaskFilter.CreateClipTable(0, 30));
+        sGlowColorFocusedPaint.setColorFilter(createClipTableFilter(0, 30));
 
         ColorMatrix cm = new ColorMatrix();
         cm.setSaturation(0.2f);
         sDisabledPaint.setColorFilter(new ColorMatrixColorFilter(cm));
         sDisabledPaint.setAlpha(0x88);
+    }
+
+    private static ColorMatrixColorFilter createClipTableFilter(int min, int max) {
+        final float scale = 255f / (max - min);
+        return new ColorMatrixColorFilter(new float[] {
+                1, 0, 0, 0, 0,
+                0, 1, 0, 0, 0,
+                0, 0, 1, 0, 0,
+                0, 0, 0, scale, -min * scale });
     }
 
     static class BubbleText {

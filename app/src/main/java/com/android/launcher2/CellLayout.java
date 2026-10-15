@@ -165,8 +165,8 @@ public class CellLayout extends ViewGroup {
 
         if (action == MotionEvent.ACTION_DOWN) {
             final Rect frame = mRect;
-            final int x = (int) ev.getX() + mScrollX;
-            final int y = (int) ev.getY() + mScrollY;
+            final int x = (int) ev.getX() + getScrollX();
+            final int y = (int) ev.getY() + getScrollY();
             final int count = getChildCount();
 
             boolean found = false;

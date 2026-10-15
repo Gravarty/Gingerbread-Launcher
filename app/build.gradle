@@ -1,0 +1,25 @@
+plugins { id "com.android.application" }
+
+android {
+    namespace "com.android.launcher"
+    compileSdk 37
+
+    defaultConfig {
+        applicationId "com.gravarty.launcher2"
+        minSdk 29
+        targetSdk 37
+        versionCode 1
+        versionName "2.3.7"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    lint { abortOnError false }
+}

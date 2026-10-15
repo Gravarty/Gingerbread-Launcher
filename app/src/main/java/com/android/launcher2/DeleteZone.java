@@ -152,8 +152,8 @@ public class DeleteZone extends ImageView implements DropTarget, DragController.
             createAnimations();
             final int[] location = mLocation;
             getLocationOnScreen(location);
-            mRegion.set(location[0], location[1], location[0] + mRight - mLeft,
-                    location[1] + mBottom - mTop);
+            mRegion.set(location[0], location[1], location[0] + getRight() - getLeft(),
+                    location[1] + getBottom() - getTop());
             mDragController.setDeleteRegion(mRegion);
             mTransition.resetTransition();
             startAnimation(mInAnimation);

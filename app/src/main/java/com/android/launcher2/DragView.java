@@ -33,7 +33,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.KeyEvent;
 import android.view.WindowManager;
-import android.view.WindowManagerImpl;
 
 public class DragView extends View implements TweenCallback {
     // Number of pixels to add to the dragged item for scaling.  Should be even for pixel alignment.
@@ -66,7 +65,7 @@ public class DragView extends View implements TweenCallback {
             int left, int top, int width, int height) {
         super(context);
 
-        mWindowManager = WindowManagerImpl.getDefault();
+        mWindowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         
         mTween = new SymmetricalLinearTween(false, 110 /*ms duration*/, this);
 

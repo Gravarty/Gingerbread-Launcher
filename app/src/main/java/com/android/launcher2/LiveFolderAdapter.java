@@ -143,7 +143,7 @@ class LiveFolderAdapter extends CursorAdapter {
 
             if (icon == null) {
                 final Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
-                final Bitmap resampled = Utilities.resampleIconBitmap(bitmap, mContext);
+                final Bitmap resampled = Utilities.resampleIconBitmap(bitmap, mLauncher);
                 if (bitmap != resampled) {
                     // If we got back a different object, we don't need the old one any more.
                     bitmap.recycle();
@@ -162,7 +162,7 @@ class LiveFolderAdapter extends CursorAdapter {
                     final int id = resources.getIdentifier(resource,
                             null, null);
                     icon = new FastBitmapDrawable(
-                            Utilities.createIconBitmap(resources.getDrawable(id), mContext));
+                            Utilities.createIconBitmap(resources.getDrawable(id), mLauncher));
                     mIcons.put(resource, icon);
                 } catch (Exception e) {
                     // Ignore

@@ -81,7 +81,7 @@ public class UserFolder extends Folder implements DropTarget {
 
     void bind(FolderInfo info) {
         super.bind(info);
-        setContentAdapter(new ShortcutsAdapter(mContext, ((UserFolderInfo) info).contents));
+        setContentAdapter(new ShortcutsAdapter(getContext(), ((UserFolderInfo) info).contents));
     }
 
     // When the folder opens, we need to refresh the GridView's selection by

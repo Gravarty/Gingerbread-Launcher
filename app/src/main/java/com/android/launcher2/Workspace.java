@@ -421,7 +421,7 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
     }
 
     private void updateWallpaperOffset() {
-        updateWallpaperOffset(getChildAt(getChildCount() - 1).getRight() - (mRight - mLeft));
+        updateWallpaperOffset(getChildAt(getChildCount() - 1).getRight() - getWidth());
     }
 
     private void updateWallpaperOffset(int scrollRange) {
@@ -429,7 +429,7 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
         if (token != null) {
             mWallpaperManager.setWallpaperOffsetSteps(1.0f / (getChildCount() - 1), 0 );
             mWallpaperManager.setWallpaperOffsets(getWindowToken(),
-                    Math.max(0.f, Math.min(mScrollX/(float)scrollRange, 1.f)), 0);
+                    Math.max(0.f, Math.min(getScrollX()/(float)scrollRange, 1.f)), 0);
         }
     }
     
@@ -443,9 +443,9 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
     @Override
     public void computeScroll() {
         if (mScroller.computeScrollOffset()) {
-            mTouchX = mScrollX = mScroller.getCurrX();
+            super.scrollTo(mScroller.getCurrX(), mScroller.getCurrY());
+            mTouchX = mScroller.getCurrX();
             mSmoothingTime = System.nanoTime() / NANOTIME_DIV;
-            mScrollY = mScroller.getCurrY();
             updateWallpaperOffset();
             postInvalidate();
         } else if (mNextScreen != INVALID_SCREEN) {
@@ -458,8 +458,8 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
         } else if (mTouchState == TOUCH_STATE_SCROLLING) {
             final float now = System.nanoTime() / NANOTIME_DIV;
             final float e = (float) Math.exp((now - mSmoothingTime) / SMOOTHING_CONSTANT);
-            final float dx = mTouchX - mScrollX;
-            mScrollX += dx * e;
+            final float dx = mTouchX - getScrollX();
+            super.scrollTo((int) (getScrollX() + dx * e), getScrollY());
             mSmoothingTime = now;
 
             // Keep generating points as long as we're more than 1px away from the target
@@ -486,7 +486,7 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
             drawChild(canvas, getChildAt(mCurrentScreen), getDrawingTime());
         } else {
             final long drawingTime = getDrawingTime();
-            final float scrollPos = (float) mScrollX / getWidth();
+            final float scrollPos = (float) getScrollX() / getWidth();
             final int leftScreen = (int) scrollPos;
             final int rightScreen = leftScreen + 1;
             if (leftScreen >= 0) {
@@ -682,7 +682,7 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
                         // Scroll if the user moved far enough along the X axis
                         mTouchState = TOUCH_STATE_SCROLLING;
                         mLastMotionX = x;
-                        mTouchX = mScrollX;
+                        mTouchX = getScrollX();
                         mSmoothingTime = System.nanoTime() / NANOTIME_DIV;
                         enableChildrenCache(mCurrentScreen - 1, mCurrentScreen + 1);
                     }
@@ -893,8 +893,8 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
                 final int velocityX = (int) velocityTracker.getXVelocity(mActivePointerId);
                 
                 final int screenWidth = getWidth();
-                final int whichScreen = (mScrollX + (screenWidth / 2)) / screenWidth;
-                final float scrolledPos = (float) mScrollX / screenWidth;
+                final int whichScreen = (getScrollX() + (screenWidth / 2)) / screenWidth;
+                final float scrolledPos = (float) getScrollX() / screenWidth;
                 
                 if (velocityX > SNAP_VELOCITY && mCurrentScreen > 0) {
                     // Fling hard enough to move left.
@@ -919,7 +919,7 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
         case MotionEvent.ACTION_CANCEL:
             if (mTouchState == TOUCH_STATE_SCROLLING) {
                 final int screenWidth = getWidth();
-                final int whichScreen = (mScrollX + (screenWidth / 2)) / screenWidth;
+                final int whichScreen = (getScrollX() + (screenWidth / 2)) / screenWidth;
                 snapToScreen(whichScreen, 0, true);
             }
             mTouchState = TOUCH_STATE_REST;
@@ -973,7 +973,7 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
         
         final int screenDelta = Math.max(1, Math.abs(whichScreen - mCurrentScreen));
         final int newX = whichScreen * getWidth();
-        final int delta = newX - mScrollX;
+        final int delta = newX - getScrollX();
         int duration = (screenDelta + 1) * 100;
 
         if (!mScroller.isFinished()) {
@@ -995,7 +995,7 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
         }
 
         awakenScrollBars(duration);
-        mScroller.startScroll(mScrollX, 0, delta, 0, duration);
+        mScroller.startScroll(getScrollX(), 0, delta, 0, duration);
         invalidate();
     }
 
