@@ -966,8 +966,14 @@ public class AllApps3D extends GLSurfaceView
                     cancelLongPress();
                     mCurrentIconIndex = -1;
                     sRollo.clearSelectedIcon();
+                    // end the list's touch like a release without velocity; only setting
+                    // newTouchDown would leave the script thinking the finger is still
+                    // down, and the next touch would jump the list by the distance
+                    // between the two touches
                     sRollo.mState.newTouchDown = 0;
+                    sRollo.mState.flingVelocity = 0;
                     sRollo.mState.save();
+                    sRollo.fling();
                     mTouchTracking = TRACKING_NONE;
                     if (mVelocityTracker != null) mVelocityTracker.recycle();
                     mVelocityTracker = VelocityTracker.obtain();
