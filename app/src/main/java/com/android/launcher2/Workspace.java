@@ -301,7 +301,7 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
         clearVacantCache();
         mCurrentScreen = Math.max(0, Math.min(currentScreen, getChildCount() - 1));
         mPreviousIndicator.setLevel(mCurrentScreen);
-        mNextIndicator.setLevel(mCurrentScreen);
+        mNextIndicator.setLevel(nextIndicatorLevel(mCurrentScreen)); // Tweaks
         scrollTo(mCurrentScreen * getWidth(), 0);
         updateWallpaperOffset();
         invalidate();
@@ -458,7 +458,7 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
         } else if (mNextScreen != INVALID_SCREEN) {
             mCurrentScreen = Math.max(0, Math.min(mNextScreen, getChildCount() - 1));
             mPreviousIndicator.setLevel(mCurrentScreen);
-            mNextIndicator.setLevel(mCurrentScreen);
+            mNextIndicator.setLevel(nextIndicatorLevel(mCurrentScreen)); // Tweaks
             Launcher.setScreen(mCurrentScreen);
             mNextScreen = INVALID_SCREEN;
             clearChildrenCache();
@@ -975,7 +975,7 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
         mNextScreen = whichScreen;
 
         mPreviousIndicator.setLevel(mNextScreen);
-        mNextIndicator.setLevel(mNextScreen);
+        mNextIndicator.setLevel(nextIndicatorLevel(mNextScreen)); // Tweaks
 
         View focusedChild = getFocusedChild();
         if (focusedChild != null && whichScreen != mCurrentScreen &&
@@ -1508,11 +1508,17 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
         getChildAt(mDefaultScreen).requestFocus();
     }
 
+    // Tweaks: the right indicator's level-list is made for 5 screens (level = screen,
+    // dots = screens to the right); shift it so the dots match the configured count.
+    private int nextIndicatorLevel(int screen) {
+        return screen + (5 - getChildCount());
+    }
+
     void setIndicators(Drawable previous, Drawable next) {
         mPreviousIndicator = previous;
         mNextIndicator = next;
         previous.setLevel(mCurrentScreen);
-        next.setLevel(mCurrentScreen);
+        next.setLevel(nextIndicatorLevel(mCurrentScreen)); // Tweaks
     }
 
     public static class SavedState extends BaseSavedState {
