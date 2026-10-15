@@ -1962,6 +1962,7 @@ public class AllApps3D extends GLSurfaceView
 
             public void onSurfaceChanged(GL10 unused, int width, int height) {
                 mSurfaceWidth = width;
+                mUniformLayout = null; // Tweaks: setupLayout() depends on the surface size
                 mSurfaceHeight = height;
             }
 
@@ -1988,9 +1989,16 @@ public class AllApps3D extends GLSurfaceView
                     setupLayout(l);
                 }
 
-                // Draw inside the area not covered by system bars (GL origin bottom left).
-                GLES20.glViewport(l.grid.left, l.surfaceHeight - l.grid.bottom,
-                        l.grid.width(), l.grid.height());
+                if (Launcher.NO_BAR_BACKGROUNDS) {
+                    // Tweaks: without the black bars the grid is drawn over the whole
+                    // surface (placed by setupLayout()), so the icons aren't cut off at the
+                    // status bar while they fly in and out.
+                    GLES20.glViewport(0, 0, mSurfaceWidth, mSurfaceHeight);
+                } else {
+                    // Draw inside the area not covered by system bars (GL origin bottom left).
+                    GLES20.glViewport(l.grid.left, l.surfaceHeight - l.grid.bottom,
+                            l.grid.width(), l.grid.height());
+                }
 
                 // mPSIcons
                 GLES20.glDisable(GLES20.GL_DEPTH_TEST);   // DepthFunc.ALWAYS
@@ -2027,6 +2035,25 @@ public class AllApps3D extends GLSurfaceView
 
                 setupProjectionNormalized(w, h);
                 Matrix.orthoM(mOrtho, 0, 0, l.contentW, 0, l.contentH, -1, 1);
+                if (Launcher.NO_BAR_BACKGROUNDS) {
+                    // Tweaks: place the grid / content area inside the full surface
+                    // viewport instead of clipping to them with the viewport.
+                    placeInSurface(mProjection, l.grid, mSurfaceWidth, mSurfaceHeight);
+                    placeInSurface(mOrtho, l.content, mSurfaceWidth, mSurfaceHeight);
+                }
+            }
+
+            /** Tweaks: m = (clip space of the whole surface <- clip space of r) * m */
+            private void placeInSurface(float[] m, Rect r, int sw, int sh) {
+                final float[] place = new float[16];
+                Matrix.setIdentityM(place, 0);
+                place[0] = (float) r.width() / sw;
+                place[5] = (float) r.height() / sh;
+                place[12] = (2.f * r.left + r.width()) / sw - 1.f;
+                place[13] = (2.f * (sh - r.bottom) + r.height()) / sh - 1.f;
+                final float[] tmp = new float[16];
+                Matrix.multiplyMM(tmp, 0, place, 0, m, 0);
+                System.arraycopy(tmp, 0, m, 0, 16);
             }
 
             /** ProgramVertex.MatrixAllocation.setupProjectionNormalized(w, h). */
@@ -2119,8 +2146,12 @@ public class AllApps3D extends GLSurfaceView
                 mQuad.put(q).position(0);
 
                 final Layout l = layout;
-                GLES20.glViewport(l.content.left, l.surfaceHeight - l.content.bottom,
-                        l.content.width(), l.content.height());
+                if (Launcher.NO_BAR_BACKGROUNDS) { // Tweaks: see setupLayout()
+                    GLES20.glViewport(0, 0, mSurfaceWidth, mSurfaceHeight);
+                } else {
+                    GLES20.glViewport(l.content.left, l.surfaceHeight - l.content.bottom,
+                            l.content.width(), l.content.height());
+                }
 
                 final int program = mSpriteRgbaProgram;
                 GLES20.glUseProgram(program);
