@@ -1759,7 +1759,9 @@ public class AllApps3D extends GLSurfaceView
                 g_DT = Math.min(g_DT, 0.2f);
 
                 if (g_Zoom != state.zoomTarget) {
-                    float dz = g_DT * 1.7f;
+                    // Port: follows the system animation speed (animator duration scale)
+                    final float scale = android.animation.ValueAnimator.getDurationScale();
+                    float dz = scale > 0 ? g_DT * 1.7f / scale : 1.f;
                     if (state.zoomTarget < 0.5f) {
                         dz = -dz;
                     }
