@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- From AOSP packages/wallpapers/Basic (android-2.3.7_r1). -->
+<resources>
+    <string name="wallpaper_nexus">Nexus</string>
+    <string name="wallpaper_nexus_author">Google</string>
+    <string name="wallpaper_nexus_desc">
+        A peek inside the neural network.
+    </string>
+</resources>

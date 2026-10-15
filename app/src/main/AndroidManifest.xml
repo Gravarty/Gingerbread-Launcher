@@ -46,6 +46,7 @@
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <uses-feature android:name="android.software.live_wallpaper" android:required="false" />
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
     <uses-permission android:name="android.permission.GET_TASKS" />
     <uses-permission android:name="android.permission.READ_CONTACTS"/>
@@ -149,6 +150,18 @@
             <meta-data android:name="android.appwidget.provider"
                 android:resource="@xml/analog_appwidget" />
         </receiver>
+
+        <!-- Port: the "Nexus" live wallpaper from AOSP packages/wallpapers/Basic. -->
+        <service
+            android:label="@string/wallpaper_nexus"
+            android:name="com.android.wallpaper.nexus.NexusWallpaper"
+            android:permission="android.permission.BIND_WALLPAPER"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.wallpaper.WallpaperService" />
+            </intent-filter>
+            <meta-data android:name="android.service.wallpaper" android:resource="@xml/nexus" />
+        </service>
 
         <!-- The settings provider contains Home's data, like the workspace favorites -->
         <provider
