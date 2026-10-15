@@ -79,6 +79,7 @@
     <string name="tweaks_drawer_rows">App drawer rows</string>
     <string name="tweaks_home_screens">Home screens</string>
     <string name="tweaks_hidden_apps">Hide apps in the app drawer</string>
+    <string name="tweaks_swipe_down_notifications">Swipe down for notifications</string>
     <string name="tweaks_reset">Default</string>
     <!-- Options in "Add to Home" dialog box; Name of the Folder widget-->
     <string name="add_folder">Folder</string>

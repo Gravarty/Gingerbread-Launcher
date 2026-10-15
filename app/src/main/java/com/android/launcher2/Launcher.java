@@ -139,6 +139,8 @@ public final class Launcher extends Activity
     static final String TWEAK_DRAWER_COLUMNS = "drawer_columns";
     static final String TWEAK_DRAWER_ROWS = "drawer_rows";
     static final String TWEAK_HOME_SCREENS = "home_screens";
+    static final String TWEAK_SWIPE_DOWN_NOTIFICATIONS = "swipe_down_notifications";
+    static boolean SWIPE_DOWN_NOTIFICATIONS = false;
     static final String TWEAK_HIDDEN_APPS = "hidden_apps"; // flattened ComponentNames
 
     // Tweaks
@@ -149,6 +151,7 @@ public final class Launcher extends Activity
         NUMBER_CELLS_Y = prefs.getInt(TWEAK_HOME_ROWS, 4);
         SCREEN_COUNT = Math.max(1, Math.min(5, prefs.getInt(TWEAK_HOME_SCREENS, 5)));
         DEFAULT_SCREEN = (SCREEN_COUNT - 1) / 2; // the middle one, 2 of 5 as in stock
+        SWIPE_DOWN_NOTIFICATIONS = prefs.getBoolean(TWEAK_SWIPE_DOWN_NOTIFICATIONS, false);
         synchronized (sLock) {
             sScreen = Math.max(0, Math.min(sScreen, SCREEN_COUNT - 1));
         }
@@ -1436,7 +1439,7 @@ public final class Launcher extends Activity
         return true;
     }
 
-    private void showNotifications() {
+    void showNotifications() { // Tweaks: was private (swipe down on the workspace)
         // StatusBarManager is hidden API; expand() became expandNotificationsPanel() in API 17.
         final Object statusBar = getSystemService("statusbar");
         if (statusBar != null) {
@@ -2233,6 +2236,11 @@ public final class Launcher extends Activity
         final int[] drawerRows = addTweakRow(layout,
                 R.string.tweaks_drawer_rows, 2, 8, prefs.getInt(TWEAK_DRAWER_ROWS, 0));
 
+        final android.widget.CheckBox swipeDown = new android.widget.CheckBox(this);
+        swipeDown.setText(R.string.tweaks_swipe_down_notifications);
+        swipeDown.setChecked(prefs.getBoolean(TWEAK_SWIPE_DOWN_NOTIFICATIONS, false));
+        layout.addView(swipeDown);
+
         final android.widget.Button hiddenApps = new android.widget.Button(this);
         hiddenApps.setText(R.string.tweaks_hidden_apps);
         hiddenApps.setOnClickListener(new View.OnClickListener() {
@@ -2258,6 +2266,7 @@ public final class Launcher extends Activity
                                 .putInt(TWEAK_HOME_COLUMNS, homeColumns[0])
                                 .putInt(TWEAK_HOME_ROWS, homeRows[0])
                                 .putInt(TWEAK_HOME_SCREENS, homeScreens[0])
+                                .putBoolean(TWEAK_SWIPE_DOWN_NOTIFICATIONS, swipeDown.isChecked())
                                 .putInt(TWEAK_DRAWER_COLUMNS, drawerColumns[0])
                                 .putInt(TWEAK_DRAWER_ROWS, drawerRows[0])
                                 .apply();

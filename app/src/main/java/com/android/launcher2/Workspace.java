@@ -67,6 +67,7 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
     private final WallpaperManager mWallpaperManager;
     
     private int mDefaultScreen;
+    private boolean mSwipeDownHandled; // Tweaks
 
     private boolean mFirstLayout = true;
 
@@ -687,6 +688,19 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
                 final int touchSlop = mTouchSlop;
                 boolean xMoved = xDiff > touchSlop;
                 boolean yMoved = yDiff > touchSlop;
+
+                // Tweaks: swipe down opens the notifications (like Lawnchair)
+                if (Launcher.SWIPE_DOWN_NOTIFICATIONS && !mSwipeDownHandled
+                        && mTouchState == TOUCH_STATE_REST
+                        && y - mLastMotionY > touchSlop && yDiff > xDiff) {
+                    mSwipeDownHandled = true;
+                    if (mAllowLongPress) {
+                        mAllowLongPress = false;
+                        getChildAt(mCurrentScreen).cancelLongPress();
+                    }
+                    mLauncher.showNotifications();
+                    break;
+                }
                 
                 if (xMoved || yMoved) {
                     
@@ -719,6 +733,7 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
                 mLastMotionY = y;
                 mActivePointerId = ev.getPointerId(0);
                 mAllowLongPress = true;
+                mSwipeDownHandled = false; // Tweaks
 
                 /*
                  * If being flinged and user touches the screen, initiate drag;
