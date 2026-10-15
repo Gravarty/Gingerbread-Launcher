@@ -84,4 +84,9 @@
         <item name="android:background">@drawable/hotseat_bg_right</item>
     </style>
 
+
+    <!-- Tweaks: launcher settings window (Gingerbread dark theme, own title bar) -->
+    <style name="Theme.Settings" parent="android:Theme.NoTitleBar">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
 </resources>

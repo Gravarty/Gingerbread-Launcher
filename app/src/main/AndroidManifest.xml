@@ -82,6 +82,15 @@
             </intent-filter>
         </activity>
 
+        <!-- Tweaks: launcher settings -->
+        <activity
+            android:name="com.android.launcher2.Launcher$Settings"
+            android:label="@string/group_tweaks"
+            android:theme="@style/Theme.Settings"
+            android:screenOrientation="nosensor"
+            android:excludeFromRecents="true"
+            android:exported="false" />
+
         <activity
             android:name="com.android.launcher2.WallpaperChooser"
             android:label="@string/pick_wallpaper"

@@ -73,19 +73,28 @@
     <string name="group_wallpapers">Wallpapers</string>
     <!-- Tweaks -->
     <string name="group_tweaks">Launcher settings</string>
-    <string name="tweaks_home_columns">Home screen columns</string>
-    <string name="tweaks_home_rows">Home screen rows</string>
-    <string name="tweaks_drawer_columns">App drawer columns</string>
-    <string name="tweaks_drawer_rows">App drawer rows</string>
-    <string name="tweaks_home_screens">Home screens</string>
-    <string name="tweaks_hidden_apps">Hide apps in the app drawer</string>
-    <string name="tweaks_swipe_down_notifications">Swipe down for notifications</string>
     <string name="tweaks_dock">Dock</string>
     <string name="tweaks_dock_contacts">Contacts</string>
     <string name="tweaks_dock_messaging">Messaging</string>
     <string name="tweaks_dock_mail">Email</string>
     <string name="tweaks_dock_camera">Camera</string>
     <string name="tweaks_reset">Default</string>
+    <string name="tweaks_category_home">Home screen</string>
+    <string name="tweaks_category_drawer">App drawer</string>
+    <string name="tweaks_columns">Columns</string>
+    <string name="tweaks_rows">Rows</string>
+    <string name="tweaks_screens">Screens</string>
+    <string name="tweaks_swipe_down_notifications">Swipe down</string>
+    <string name="tweaks_swipe_down_notifications_summary">Open the notifications with a swipe down on the home screen</string>
+    <string name="tweaks_hidden_apps">Hidden apps</string>
+    <string name="tweaks_auto">Auto</string>
+    <string name="tweaks_reset_title">Restore defaults</string>
+    <string name="tweaks_reset_summary">Reset all launcher settings</string>
+    <string name="tweaks_reset_confirm">Reset all launcher settings to their defaults?</string>
+    <plurals name="tweaks_hidden_count">
+        <item quantity="one">%d app hidden</item>
+        <item quantity="other">%d apps hidden</item>
+    </plurals>
     <!-- Options in "Add to Home" dialog box; Name of the Folder widget-->
     <string name="add_folder">Folder</string>
     <!-- Options in "Add to Home" dialog box; Name of the Clock widget-->

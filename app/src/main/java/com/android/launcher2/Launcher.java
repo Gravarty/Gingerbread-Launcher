@@ -255,6 +255,32 @@ public final class Launcher extends Activity
                 }
             }
         }
+
+        // A wider dock can reach the page indicators: hide them where they'd overlap
+        cluster.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) ->
+                hideOverlappedIndicators(cluster));
+    }
+
+    // Tweaks: dock buttons vs. the visible part of the page indicators (scaleType center)
+    private void hideOverlappedIndicators(ViewGroup cluster) {
+        if (mPreviousView == null || mNextView == null) return;
+        final android.graphics.Rect dock = new android.graphics.Rect();
+        for (int i = 0; i < cluster.getChildCount(); i++) {
+            final View c = cluster.getChildAt(i);
+            if (c.getVisibility() == View.GONE) continue;
+            dock.union(cluster.getLeft() + c.getLeft(), cluster.getTop() + c.getTop(),
+                    cluster.getLeft() + c.getRight(), cluster.getTop() + c.getBottom());
+        }
+        for (ImageView indicator : new ImageView[] { mPreviousView, mNextView }) {
+            final Drawable d = indicator.getDrawable();
+            final int w = d != null ? d.getIntrinsicWidth() : indicator.getWidth();
+            final int h = d != null ? d.getIntrinsicHeight() : indicator.getHeight();
+            final int cx = (indicator.getLeft() + indicator.getRight()) / 2;
+            final int cy = (indicator.getTop() + indicator.getBottom()) / 2;
+            final boolean overlaps = android.graphics.Rect.intersects(dock,
+                    new android.graphics.Rect(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2));
+            indicator.setVisibility(overlaps ? View.INVISIBLE : View.VISIBLE);
+        }
     }
 
     private ImageView addDockButton(ViewGroup cluster, int layout, int slot) {
@@ -769,6 +795,11 @@ public final class Launcher extends Activity
     protected void onResume() {
         super.onResume();
         mPaused = false;
+        if (Settings.sChanged) { // Tweaks: settings were changed
+            Settings.sChanged = false;
+            applyTweaks();
+            return;
+        }
         if (mAllAppsGrid instanceof android.opengl.GLSurfaceView) {
             ((android.opengl.GLSurfaceView) mAllAppsGrid).onResume();
         }
@@ -2324,7 +2355,7 @@ public final class Launcher extends Activity
 
                 case AddAdapter.ITEM_SETTINGS: { // Tweaks
                     mWaitingForResult = false;
-                    showTweaksDialog();
+                    startActivity(new Intent(Launcher.this, Settings.class));
                     break;
                 }
             }
@@ -2350,183 +2381,194 @@ public final class Launcher extends Activity
         return (DragLayer) findViewById(R.id.drag_layer);
     }
 
-    // Tweaks: grid settings dialog
-    private void showTweaksDialog() {
-        final android.content.SharedPreferences prefs =
-                getSharedPreferences(TWEAKS_PREFERENCES, MODE_PRIVATE);
-        final float density = getResources().getDisplayMetrics().density;
-        final int pad = (int) (16 * density);
+    // Tweaks: launcher settings, in their own window laid out like a Gingerbread
+    // settings screen (title bar, list separators, list selector and check boxes of 2.3.7).
+    // Changes are saved right away and applied when the launcher comes back.
+    public static class Settings extends Activity {
+        static boolean sChanged;
 
-        final LinearLayout layout = new LinearLayout(this);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(pad, pad / 2, pad, pad / 2);
+        private android.content.SharedPreferences mPrefs;
+        private LinearLayout mList;
+        private boolean mLastWasItem;
 
-        final int[] homeColumns = addTweakRow(layout,
-                R.string.tweaks_home_columns, 3, 7, prefs.getInt(TWEAK_HOME_COLUMNS, 4));
-        final int[] homeRows = addTweakRow(layout,
-                R.string.tweaks_home_rows, 3, 8, prefs.getInt(TWEAK_HOME_ROWS, 4));
-        final int[] homeScreens = addTweakRow(layout,
-                R.string.tweaks_home_screens, 1, 5, prefs.getInt(TWEAK_HOME_SCREENS, 5));
-        final int[] drawerColumns = addTweakRow(layout,
-                R.string.tweaks_drawer_columns, 2, 7, prefs.getInt(TWEAK_DRAWER_COLUMNS, 0));
-        final int[] drawerRows = addTweakRow(layout,
-                R.string.tweaks_drawer_rows, 2, 8, prefs.getInt(TWEAK_DRAWER_ROWS, 0));
+        @Override
+        protected void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            setContentView(R.layout.settings);
+            ((TextView) findViewById(R.id.settings_title)).setText(R.string.group_tweaks);
+            mPrefs = getSharedPreferences(TWEAKS_PREFERENCES, MODE_PRIVATE);
+            mList = (LinearLayout) findViewById(R.id.settings_list);
 
-        final android.widget.CheckBox swipeDown = new android.widget.CheckBox(this);
-        swipeDown.setText(R.string.tweaks_swipe_down_notifications);
-        swipeDown.setChecked(prefs.getBoolean(TWEAK_SWIPE_DOWN_NOTIFICATIONS, false));
-        layout.addView(swipeDown);
+            addCategory(R.string.tweaks_category_home);
+            addNumber(R.string.tweaks_columns, TWEAK_HOME_COLUMNS, 3, 7, 4, false);
+            addNumber(R.string.tweaks_rows, TWEAK_HOME_ROWS, 3, 8, 4, false);
+            addNumber(R.string.tweaks_screens, TWEAK_HOME_SCREENS, 1, 5, 5, false);
+            addCheck(R.string.tweaks_swipe_down_notifications,
+                    R.string.tweaks_swipe_down_notifications_summary,
+                    TWEAK_SWIPE_DOWN_NOTIFICATIONS);
 
-        // Tweaks: extra dock slots
-        final android.widget.CheckBox[] dockBoxes = new android.widget.CheckBox[DOCK_KEYS.length];
-        for (int i = 0; i < DOCK_KEYS.length; i++) {
-            dockBoxes[i] = new android.widget.CheckBox(this);
-            dockBoxes[i].setText(getString(R.string.tweaks_dock) + ": "
-                    + getString(DOCK_LABELS[i]));
-            dockBoxes[i].setChecked(prefs.getBoolean(DOCK_KEYS[i], false));
-            layout.addView(dockBoxes[i]);
+            addCategory(R.string.tweaks_category_drawer);
+            addNumber(R.string.tweaks_columns, TWEAK_DRAWER_COLUMNS, 2, 7, 0, true);
+            addNumber(R.string.tweaks_rows, TWEAK_DRAWER_ROWS, 2, 8, 0, true);
+            final TextView[] hiddenSummary = new TextView[1];
+            final View hidden = addItem(R.string.tweaks_hidden_apps, null);
+            hiddenSummary[0] = (TextView) hidden.findViewById(R.id.settings_item_summary);
+            updateHiddenSummary(hiddenSummary[0]);
+            hidden.setOnClickListener(v -> showHiddenAppsDialog(hiddenSummary[0]));
+
+            addCategory(R.string.tweaks_dock);
+            for (int i = 0; i < DOCK_KEYS.length; i++) {
+                addCheck(DOCK_LABELS[i], 0, DOCK_KEYS[i]);
+            }
+
+            addCategory(R.string.tweaks_reset);
+            addItem(R.string.tweaks_reset_title, getString(R.string.tweaks_reset_summary))
+                    .setOnClickListener(v -> confirmReset());
         }
 
-        final android.widget.Button hiddenApps = new android.widget.Button(this);
-        hiddenApps.setText(R.string.tweaks_hidden_apps);
-        hiddenApps.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                showHiddenAppsDialog();
-            }
-        });
-        layout.addView(hiddenApps);
-
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.group_tweaks)
-                .setView(layout)
-                .setNegativeButton(R.string.cancel_action, null)
-                .setNeutralButton(R.string.tweaks_reset, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int which) {
-                        prefs.edit().clear().apply();
-                        applyTweaks();
-                    }
-                })
-                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int which) {
-                        final android.content.SharedPreferences.Editor dockEditor = prefs.edit();
-                        for (int i = 0; i < DOCK_KEYS.length; i++) {
-                            dockEditor.putBoolean(DOCK_KEYS[i], dockBoxes[i].isChecked());
-                        }
-                        dockEditor.apply();
-                        prefs.edit()
-                                .putInt(TWEAK_HOME_COLUMNS, homeColumns[0])
-                                .putInt(TWEAK_HOME_ROWS, homeRows[0])
-                                .putInt(TWEAK_HOME_SCREENS, homeScreens[0])
-                                .putBoolean(TWEAK_SWIPE_DOWN_NOTIFICATIONS, swipeDown.isChecked())
-                                .putInt(TWEAK_DRAWER_COLUMNS, drawerColumns[0])
-                                .putInt(TWEAK_DRAWER_ROWS, drawerRows[0])
-                                .apply();
-                        applyTweaks();
-                    }
-                })
-                .show();
-    }
-
-    // Tweaks: "label  [-] value [+]" row; returns the live value holder
-    private int[] addTweakRow(LinearLayout parent, int label, final int min, final int max,
-            int value) {
-        // Values below min mean "Auto" (0) for the drawer settings; min 3 = no auto
-        final boolean auto = min < 3;
-        final int lowest = auto ? 0 : min;
-        final int[] holder = new int[] { value < min ? lowest : Math.min(max, value) };
-        final float density = getResources().getDisplayMetrics().density;
-
-        final LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
-
-        final TextView title = new TextView(this);
-        title.setText(label);
-        row.addView(title, new LinearLayout.LayoutParams(0,
-                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-
-        final android.widget.Button minus = new android.widget.Button(this);
-        minus.setText("\u2212");
-        final TextView valueView = new TextView(this);
-        valueView.setGravity(android.view.Gravity.CENTER);
-        valueView.setTextSize(18);
-        final android.widget.Button plus = new android.widget.Button(this);
-        plus.setText("+");
-
-        final Runnable update = new Runnable() {
-            public void run() {
-                valueView.setText(holder[0] == 0 ? "Auto" : String.valueOf(holder[0]));
-                minus.setEnabled(holder[0] > lowest);
-                plus.setEnabled(holder[0] < max);
-            }
-        };
-        minus.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                holder[0] = holder[0] > min ? holder[0] - 1 : lowest;
-                update.run();
-            }
-        });
-        plus.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                holder[0] = holder[0] < min ? min : Math.min(max, holder[0] + 1);
-                update.run();
-            }
-        });
-        update.run();
-
-        final int buttonSize = (int) (48 * density);
-        row.addView(minus, new LinearLayout.LayoutParams(buttonSize, buttonSize));
-        row.addView(valueView, new LinearLayout.LayoutParams((int) (56 * density),
-                LinearLayout.LayoutParams.WRAP_CONTENT));
-        row.addView(plus, new LinearLayout.LayoutParams(buttonSize, buttonSize));
-        parent.addView(row);
-        return holder;
-    }
-
-    // Tweaks: choose apps to hide from the app drawer
-    private void showHiddenAppsDialog() {
-        final android.content.SharedPreferences prefs =
-                getSharedPreferences(TWEAKS_PREFERENCES, MODE_PRIVATE);
-        final java.util.HashSet<String> hidden = new java.util.HashSet<String>(
-                prefs.getStringSet(TWEAK_HIDDEN_APPS, new java.util.HashSet<String>()));
-
-        final PackageManager pm = getPackageManager();
-        final Intent main = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
-        final List<ResolveInfo> apps = pm.queryIntentActivities(main, 0);
-        java.util.Collections.sort(apps, new ResolveInfo.DisplayNameComparator(pm));
-
-        final int count = apps.size();
-        final CharSequence[] labels = new CharSequence[count];
-        final String[] components = new String[count];
-        final boolean[] checked = new boolean[count];
-        for (int i = 0; i < count; i++) {
-            final ResolveInfo ri = apps.get(i);
-            labels[i] = ri.loadLabel(pm);
-            components[i] = new ComponentName(ri.activityInfo.packageName,
-                    ri.activityInfo.name).flattenToString();
-            checked[i] = hidden.contains(components[i]);
+        private void addCategory(int title) {
+            final TextView v = (TextView) getLayoutInflater().inflate(
+                    R.layout.settings_category, mList, false);
+            v.setText(title);
+            mList.addView(v);
+            mLastWasItem = false;
         }
 
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.tweaks_hidden_apps)
-                .setMultiChoiceItems(labels, checked,
-                        new DialogInterface.OnMultiChoiceClickListener() {
-                    public void onClick(DialogInterface dialog, int which, boolean isChecked) {
-                        checked[which] = isChecked;
-                    }
-                })
-                .setNegativeButton(R.string.cancel_action, null)
-                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int which) {
-                        final java.util.HashSet<String> result = new java.util.HashSet<String>();
+        private View addItem(int title, CharSequence summary) {
+            // ListView divider between two enabled items (not next to a category)
+            if (mLastWasItem) {
+                final View divider = new View(this);
+                divider.setBackgroundResource(R.drawable.gb_divider_horizontal_dark_opaque);
+                mList.addView(divider, new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT));
+            }
+            final View v = getLayoutInflater().inflate(R.layout.settings_preference, mList, false);
+            ((TextView) v.findViewById(R.id.settings_item_title)).setText(title);
+            setSummary((TextView) v.findViewById(R.id.settings_item_summary), summary);
+            mList.addView(v);
+            mLastWasItem = true;
+            return v;
+        }
+
+        private static void setSummary(TextView view, CharSequence summary) {
+            view.setText(summary);
+            view.setVisibility(summary == null || summary.length() == 0
+                    ? View.GONE : View.VISIBLE);
+        }
+
+        private void addCheck(int title, int summary, final String key) {
+            final View v = addItem(title, summary == 0 ? null : getString(summary));
+            final android.widget.CheckBox box =
+                    (android.widget.CheckBox) v.findViewById(R.id.settings_item_checkbox);
+            box.setVisibility(View.VISIBLE);
+            box.setChecked(mPrefs.getBoolean(key, false));
+            v.setOnClickListener(view -> {
+                box.setChecked(!box.isChecked());
+                mPrefs.edit().putBoolean(key, box.isChecked()).apply();
+                sChanged = true;
+            });
+        }
+
+        // ListPreference style: the summary shows the value, a dialog picks a new one.
+        // "Auto" (0) is the stock drawer layout.
+        private void addNumber(final int title, final String key, int min, int max,
+                int def, boolean auto) {
+            final int count = max - min + 1 + (auto ? 1 : 0);
+            final String[] labels = new String[count];
+            final int[] values = new int[count];
+            int i = 0;
+            if (auto) {
+                labels[i] = getString(R.string.tweaks_auto);
+                values[i++] = 0;
+            }
+            for (int n = min; n <= max; n++, i++) {
+                labels[i] = String.valueOf(n);
+                values[i] = n;
+            }
+            final int stored = mPrefs.getInt(key, def);
+            int index = 0;
+            for (int j = 0; j < count; j++) {
+                if (values[j] == stored) index = j;
+                else if (stored > max && values[j] == max) index = j;
+            }
+            final int[] selected = { index };
+            final View v = addItem(title, labels[index]);
+            final TextView summary = (TextView) v.findViewById(R.id.settings_item_summary);
+            v.setOnClickListener(view -> new AlertDialog.Builder(this)
+                    .setTitle(title)
+                    .setSingleChoiceItems(labels, selected[0], (dialog, which) -> {
+                        selected[0] = which;
+                        mPrefs.edit().putInt(key, values[which]).apply();
+                        sChanged = true;
+                        setSummary(summary, labels[which]);
+                        dialog.dismiss();
+                    })
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show());
+        }
+
+        private void confirmReset() {
+            new AlertDialog.Builder(this)
+                    .setIcon(android.R.drawable.ic_dialog_alert)
+                    .setTitle(R.string.tweaks_reset_title)
+                    .setMessage(R.string.tweaks_reset_confirm)
+                    .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                        mPrefs.edit().clear().apply();
+                        sChanged = true;
+                        recreate();
+                    })
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show();
+        }
+
+        private void updateHiddenSummary(TextView summary) {
+            final int n = mPrefs.getStringSet(TWEAK_HIDDEN_APPS,
+                    new java.util.HashSet<String>()).size();
+            setSummary(summary, n == 0 ? null
+                    : getResources().getQuantityString(R.plurals.tweaks_hidden_count, n, n));
+        }
+
+        // Choose apps to hide from the app drawer
+        private void showHiddenAppsDialog(final TextView summary) {
+            final java.util.HashSet<String> hidden = new java.util.HashSet<String>(
+                    mPrefs.getStringSet(TWEAK_HIDDEN_APPS, new java.util.HashSet<String>()));
+
+            final PackageManager pm = getPackageManager();
+            final Intent main = new Intent(Intent.ACTION_MAIN)
+                    .addCategory(Intent.CATEGORY_LAUNCHER);
+            final List<ResolveInfo> apps = pm.queryIntentActivities(main, 0);
+            java.util.Collections.sort(apps, new ResolveInfo.DisplayNameComparator(pm));
+
+            final int count = apps.size();
+            final CharSequence[] labels = new CharSequence[count];
+            final String[] components = new String[count];
+            final boolean[] checked = new boolean[count];
+            for (int i = 0; i < count; i++) {
+                final ResolveInfo ri = apps.get(i);
+                labels[i] = ri.loadLabel(pm);
+                components[i] = new ComponentName(ri.activityInfo.packageName,
+                        ri.activityInfo.name).flattenToString();
+                checked[i] = hidden.contains(components[i]);
+            }
+
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.tweaks_hidden_apps)
+                    .setMultiChoiceItems(labels, checked,
+                            (dialog, which, isChecked) -> checked[which] = isChecked)
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                        final java.util.HashSet<String> result =
+                                new java.util.HashSet<String>();
                         for (int i = 0; i < count; i++) {
                             if (checked[i]) result.add(components[i]);
                         }
-                        prefs.edit().putStringSet(TWEAK_HIDDEN_APPS, result).apply();
-                        applyTweaks();
-                    }
-                })
-                .show();
+                        mPrefs.edit().putStringSet(TWEAK_HIDDEN_APPS, result).apply();
+                        sChanged = true;
+                        updateHiddenSummary(summary);
+                    })
+                    .show();
+        }
     }
 
     // Tweaks: drawer list without the hidden apps
