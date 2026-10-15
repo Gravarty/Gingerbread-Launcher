@@ -109,10 +109,31 @@ public class DragLayer extends FrameLayout {
                 }
             }
         }
+        updateGestureExclusion(); // Port
         final View allApps = findViewById(R.id.all_apps_view);
         if (allApps != null && allApps.getVisibility() != GONE) {
             allApps.layout(0, 0, right - left, bottom - top);
         }
+    }
+
+    /**
+     * Port: on the home screen the back gesture has nothing to do (back did nothing on
+     * Gingerbread's home screen either), so keep it off like Launcher3's
+     * LauncherRootView.setDisallowBackGesture(); it stays on for all apps and folders.
+     */
+    private boolean mDisallowBackGesture;
+
+    void setDisallowBackGesture(boolean disallow) {
+        if (mDisallowBackGesture != disallow) {
+            mDisallowBackGesture = disallow;
+            updateGestureExclusion();
+        }
+    }
+
+    private void updateGestureExclusion() {
+        setSystemGestureExclusionRects(mDisallowBackGesture
+                ? java.util.Collections.singletonList(new Rect(0, 0, getWidth(), getHeight()))
+                : java.util.Collections.<Rect>emptyList());
     }
 
     public void setDragController(DragController controller) {
