@@ -79,6 +79,14 @@
     <string name="tweaks_dock_mail">Email</string>
     <string name="tweaks_dock_camera">Camera</string>
     <string name="tweaks_reset">Default</string>
+    <string name="tweaks_category_grid">Grid</string>
+    <string name="tweaks_category_screens">Pages</string>
+    <string name="tweaks_category_gestures">Gestures</string>
+    <string name="tweaks_category_apps">Apps</string>
+    <string name="tweaks_category_dock_apps">Additional apps</string>
+    <string name="tweaks_home_summary">Grid, pages, gestures</string>
+    <string name="tweaks_drawer_summary">Grid, hidden apps</string>
+    <string name="tweaks_dock_summary">Additional apps in the dock</string>
     <string name="tweaks_category_home">Home screen</string>
     <string name="tweaks_category_drawer">App drawer</string>
     <string name="tweaks_columns">Columns</string>

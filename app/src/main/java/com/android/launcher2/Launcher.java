@@ -2386,6 +2386,7 @@ public final class Launcher extends Activity
     // Changes are saved right away and applied when the launcher comes back.
     public static class Settings extends Activity {
         static boolean sChanged;
+        private static final String EXTRA_PAGE = "page";
 
         private android.content.SharedPreferences mPrefs;
         private LinearLayout mList;
@@ -2399,31 +2400,48 @@ public final class Launcher extends Activity
             mPrefs = getSharedPreferences(TWEAKS_PREFERENCES, MODE_PRIVATE);
             mList = (LinearLayout) findViewById(R.id.settings_list);
 
-            addCategory(R.string.tweaks_category_home);
-            addNumber(R.string.tweaks_columns, TWEAK_HOME_COLUMNS, 3, 7, 4, false);
-            addNumber(R.string.tweaks_rows, TWEAK_HOME_ROWS, 3, 8, 4, false);
-            addNumber(R.string.tweaks_screens, TWEAK_HOME_SCREENS, 1, 5, 5, false);
-            addCheck(R.string.tweaks_swipe_down_notifications,
-                    R.string.tweaks_swipe_down_notifications_summary,
-                    TWEAK_SWIPE_DOWN_NOTIFICATIONS);
-
-            addCategory(R.string.tweaks_category_drawer);
-            addNumber(R.string.tweaks_columns, TWEAK_DRAWER_COLUMNS, 2, 7, 0, true);
-            addNumber(R.string.tweaks_rows, TWEAK_DRAWER_ROWS, 2, 8, 0, true);
-            final TextView[] hiddenSummary = new TextView[1];
-            final View hidden = addItem(R.string.tweaks_hidden_apps, null);
-            hiddenSummary[0] = (TextView) hidden.findViewById(R.id.settings_item_summary);
-            updateHiddenSummary(hiddenSummary[0]);
-            hidden.setOnClickListener(v -> showHiddenAppsDialog(hiddenSummary[0]));
-
-            addCategory(R.string.tweaks_dock);
-            for (int i = 0; i < DOCK_KEYS.length; i++) {
-                addCheck(DOCK_LABELS[i], 0, DOCK_KEYS[i]);
+            // Main page lists the sections, each section has its own page (like Lawnchair)
+            final int page = getIntent().getIntExtra(EXTRA_PAGE, 0);
+            if (page != 0) {
+                ((TextView) findViewById(R.id.settings_title)).setText(page);
             }
+            if (page == R.string.tweaks_category_home) {
+                addCategory(R.string.tweaks_category_grid);
+                addNumber(R.string.tweaks_columns, TWEAK_HOME_COLUMNS, 3, 7, 4, false);
+                addNumber(R.string.tweaks_rows, TWEAK_HOME_ROWS, 3, 8, 4, false);
+                addCategory(R.string.tweaks_category_screens);
+                addNumber(R.string.tweaks_screens, TWEAK_HOME_SCREENS, 1, 5, 5, false);
+                addCategory(R.string.tweaks_category_gestures);
+                addCheck(R.string.tweaks_swipe_down_notifications,
+                        R.string.tweaks_swipe_down_notifications_summary,
+                        TWEAK_SWIPE_DOWN_NOTIFICATIONS);
+            } else if (page == R.string.tweaks_category_drawer) {
+                addCategory(R.string.tweaks_category_grid);
+                addNumber(R.string.tweaks_columns, TWEAK_DRAWER_COLUMNS, 2, 7, 0, true);
+                addNumber(R.string.tweaks_rows, TWEAK_DRAWER_ROWS, 2, 8, 0, true);
+                addCategory(R.string.tweaks_category_apps);
+                final View hidden = addItem(R.string.tweaks_hidden_apps, null);
+                final TextView hiddenSummary =
+                        (TextView) hidden.findViewById(R.id.settings_item_summary);
+                updateHiddenSummary(hiddenSummary);
+                hidden.setOnClickListener(v -> showHiddenAppsDialog(hiddenSummary));
+            } else if (page == R.string.tweaks_dock) {
+                addCategory(R.string.tweaks_category_dock_apps);
+                for (int i = 0; i < DOCK_KEYS.length; i++) {
+                    addCheck(DOCK_LABELS[i], 0, DOCK_KEYS[i]);
+                }
+            } else {
+                addPage(R.string.tweaks_category_home, R.string.tweaks_home_summary);
+                addPage(R.string.tweaks_category_drawer, R.string.tweaks_drawer_summary);
+                addPage(R.string.tweaks_dock, R.string.tweaks_dock_summary);
+                addItem(R.string.tweaks_reset_title, getString(R.string.tweaks_reset_summary))
+                        .setOnClickListener(v -> confirmReset());
+            }
+        }
 
-            addCategory(R.string.tweaks_reset);
-            addItem(R.string.tweaks_reset_title, getString(R.string.tweaks_reset_summary))
-                    .setOnClickListener(v -> confirmReset());
+        private void addPage(final int title, int summary) {
+            addItem(title, getString(summary)).setOnClickListener(v -> startActivity(
+                    new Intent(this, Settings.class).putExtra(EXTRA_PAGE, title)));
         }
 
         private void addCategory(int title) {

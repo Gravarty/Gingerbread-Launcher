@@ -46,6 +46,14 @@
     <string name="tweaks_dock_mail">"E-Mail"</string>
     <string name="tweaks_dock_camera">"Kamera"</string>
     <string name="tweaks_reset">"Standard"</string>
+    <string name="tweaks_category_grid">"Raster"</string>
+    <string name="tweaks_category_screens">"Seiten"</string>
+    <string name="tweaks_category_gestures">"Gesten"</string>
+    <string name="tweaks_category_apps">"Apps"</string>
+    <string name="tweaks_category_dock_apps">"Zusätzliche Apps"</string>
+    <string name="tweaks_home_summary">"Raster, Seiten, Gesten"</string>
+    <string name="tweaks_drawer_summary">"Raster, ausgeblendete Apps"</string>
+    <string name="tweaks_dock_summary">"Zusätzliche Apps im Dock"</string>
     <string name="tweaks_category_home">"Startbildschirm"</string>
     <string name="tweaks_category_drawer">"App-Drawer"</string>
     <string name="tweaks_columns">"Spalten"</string>
