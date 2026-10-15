@@ -2166,13 +2166,13 @@ public final class Launcher extends Activity
     }
 
     // Tweaks: widget resizing (from ICS)
+    // Same span calculation as completeAddAppWidget() (Gingerbread: no widget padding).
+    // ICS added the default widget padding here and when placing widgets; adding it only
+    // here made the minimum larger than the placed size, so resizing forced the widget
+    // to grow and it could never shrink back.
     int[] getMinResizeSpanForWidget(AppWidgetProviderInfo info, int[] spanXY) {
-        Rect padding = android.appwidget.AppWidgetHostView.getDefaultPaddingForWidget(this,
-                info.provider, null);
-        int requiredWidth = info.minResizeWidth + padding.left + padding.right;
-        int requiredHeight = info.minResizeHeight + padding.top + padding.bottom;
         CellLayout layout = (CellLayout) mWorkspace.getChildAt(mWorkspace.getCurrentScreen());
-        return layout.rectToCell(requiredWidth, requiredHeight);
+        return layout.rectToCell(info.minResizeWidth, info.minResizeHeight);
     }
 
     // Tweaks

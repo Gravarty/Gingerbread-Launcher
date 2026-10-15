@@ -88,6 +88,11 @@ public class AppWidgetResizeFrame extends FrameLayout {
         int[] result = mLauncher.getMinResizeSpanForWidget(info, null);
         mMinHSpan = result[0];
         mMinVSpan = result[1];
+        // Tweaks: never require more than the widget's current size as the minimum,
+        // otherwise every resize step forces it to grow.
+        final CellLayout.LayoutParams wlp = (CellLayout.LayoutParams) widgetView.getLayoutParams();
+        mMinHSpan = Math.min(mMinHSpan, wlp.cellHSpan);
+        mMinVSpan = Math.min(mMinVSpan, wlp.cellVSpan);
 
         setBackgroundResource(R.drawable.widget_resize_frame_holo);
         setPadding(0, 0, 0, 0);
