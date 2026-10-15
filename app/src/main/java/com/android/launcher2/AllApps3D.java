@@ -183,6 +183,9 @@ public class AllApps3D extends GLSurfaceView
         final float k;              // screen px per virtual px
         final float w, h;           // virtual size of the drawer content area
         final Rect content;         // drawer content area in view px
+        // Tweaks: icon grid area (letterboxed inside content when cols/rows are set)
+        final Rect grid;
+        final float contentW, contentH; // virtual size of content (home button)
         final int surfaceHeight;    // view px
         final int cols, rows;
         final float rowHeight;
@@ -191,7 +194,7 @@ public class AllApps3D extends GLSurfaceView
         final float touchCenterY;   // initTouchState() center, virtual px from the top
         final float refHeightPx;    // touch drag normalisation
 
-        Layout(int viewWidth, int viewHeight, Rect insets) {
+        Layout(int viewWidth, int viewHeight, Rect insets, int tweakCols, int tweakRows) {
             content = new Rect(insets.left, insets.top,
                     Math.max(insets.left + 1, viewWidth - insets.right),
                     Math.max(insets.top + 1, viewHeight - insets.bottom));
@@ -199,7 +202,32 @@ public class AllApps3D extends GLSurfaceView
             final int cw = content.width();
             final int ch = content.height();
             portrait = cw < ch;
-            if (portrait) {
+            grid = new Rect(content);
+            if (portrait && (tweakCols > 0 || tweakRows > 0)) {
+                // Tweaks: 120px columns and 145px rows as in the original, the grid is
+                // scaled to fit and centered. Rows: h = rows * 145 + 180 keeps the original
+                // bends (120 / h - 80, 760 for 4 rows).
+                final int c = tweakCols > 0 ? tweakCols : Defines.COLUMNS_PER_PAGE_PORTRAIT;
+                float kk = cw / (120f * c);
+                if (tweakRows > 0) {
+                    kk = Math.min(kk, ch / (tweakRows * 145f + 180f));
+                }
+                final int gw = Math.round(120f * c * kk);
+                final int gh = tweakRows > 0 ? Math.round((tweakRows * 145f + 180f) * kk) : ch;
+                grid.left = content.left + (cw - gw) / 2;
+                grid.top = content.top + (ch - gh) / 2;
+                grid.right = grid.left + gw;
+                grid.bottom = grid.top + gh;
+                k = kk;
+                w = 120f * c;
+                h = gh / k;
+                cols = c;
+                rowHeight = 120.f + 25.f;
+                bendY1 = 120.f;
+                bendY2 = h - 80.f;
+                touchCenterY = h * 0.5f;
+                refHeightPx = REF_HEIGHT_PORTRAIT * k;
+            } else if (portrait) {
                 k = cw / 480f;
                 w = 480f;
                 h = ch / k;
@@ -221,7 +249,10 @@ public class AllApps3D extends GLSurfaceView
                 refHeightPx = REF_HEIGHT_LANDSCAPE * k;
             }
             // 4 rows portrait / 3 rows landscape on the original screen
-            rows = Math.max(1, Math.round((bendY2 - bendY1) / rowHeight));
+            rows = (portrait && tweakRows > 0) ? tweakRows // Tweaks
+                    : Math.max(1, Math.round((bendY2 - bendY1) / rowHeight));
+            contentW = cw / k;
+            contentH = ch / k;
             // 0.5h + 1.5 rows portrait, 0.47h + 1.0 row landscape on the original screen
             yoff = (portrait ? 0.5f : 0.47f) * h + ((rows - 1) * 0.5f) * rowHeight;
         }
@@ -277,7 +308,13 @@ public class AllApps3D extends GLSurfaceView
     }
 
     private void updateLayout(int w, int h) {
-        mLayout = new Layout(w, h, mContentInsets);
+        // Tweaks: drawer grid from the launcher settings (0 = stock)
+        final android.content.SharedPreferences prefs = getContext().getSharedPreferences(
+                Launcher.TWEAKS_PREFERENCES, Context.MODE_PRIVATE);
+        final int cols = prefs.getInt(Launcher.TWEAK_DRAWER_COLUMNS, 0);
+        mLayout = new Layout(w, h, mContentInsets,
+                cols == Defines.COLUMNS_PER_PAGE_PORTRAIT ? 0 : cols,
+                prefs.getInt(Launcher.TWEAK_DRAWER_ROWS, 0));
         mColumnsPerPage = mLayout.cols;
         mRowsPerPage = mLayout.rows;
         initTouchState(w, h);
@@ -565,7 +602,7 @@ public class AllApps3D extends GLSurfaceView
         float cellHeight = l.rowHeight;
         float top = l.touchCenterY - (mRowsPerPage * cellHeight) / 2;
         for (int i = 0; i <= mRowsPerPage; i++) {
-            mTouchYBorders[i] = l.content.top
+            mTouchYBorders[i] = l.grid.top
                     + (int) ((top + (i * cellHeight) - statusBarShift) * l.k);
         }
 
@@ -573,7 +610,7 @@ public class AllApps3D extends GLSurfaceView
         // TODO: Put this in a config file/define
         float columnWidth = 120;
         for (int i = 0; i < mColumnsPerPage + 1; i++) {
-            mTouchXBorders[i] = l.content.left + (int) (x * l.k);
+            mTouchXBorders[i] = l.grid.left + (int) (x * l.k);
             x += columnWidth;
         }
     }
@@ -1648,12 +1685,13 @@ public class AllApps3D extends GLSurfaceView
                 final Params params = mRenderer.params;
                 setColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-                float w = getWidth();
-                float h = getHeight();
+                // Tweaks: content size instead of getWidth()/getHeight() (same when stock)
+                float w = mRenderer.layout.contentW;
+                float h = mRenderer.layout.contentH;
 
                 float x;
                 float y;
-                if (getWidth() > getHeight()) {
+                if (w > h) {
                     x = w - (params.homeButtonTextureWidth * (1 - g_Animation)) + 20;
                     y = (h - params.homeButtonTextureHeight) * 0.5f;
                 } else {
@@ -1928,8 +1966,8 @@ public class AllApps3D extends GLSurfaceView
                 }
 
                 // Draw inside the area not covered by system bars (GL origin bottom left).
-                GLES20.glViewport(l.content.left, l.surfaceHeight - l.content.bottom,
-                        l.content.width(), l.content.height());
+                GLES20.glViewport(l.grid.left, l.surfaceHeight - l.grid.bottom,
+                        l.grid.width(), l.grid.height());
 
                 // mPSIcons
                 GLES20.glDisable(GLES20.GL_DEPTH_TEST);   // DepthFunc.ALWAYS
@@ -1963,7 +2001,7 @@ public class AllApps3D extends GLSurfaceView
                 vpScaleOffset[3] = -(h / 2) - 0.25f;  // -380.25 at the original 760
 
                 setupProjectionNormalized(w, h);
-                Matrix.orthoM(mOrtho, 0, 0, w, 0, h, -1, 1);
+                Matrix.orthoM(mOrtho, 0, 0, l.contentW, 0, l.contentH, -1, 1);
             }
 
             /** ProgramVertex.MatrixAllocation.setupProjectionNormalized(w, h). */
@@ -2054,6 +2092,11 @@ public class AllApps3D extends GLSurfaceView
                 };
                 mQuad.clear();
                 mQuad.put(q).position(0);
+
+                // Tweaks: the home button uses the whole content area, not the grid area
+                final Layout l = layout;
+                GLES20.glViewport(l.content.left, l.surfaceHeight - l.content.bottom,
+                        l.content.width(), l.content.height());
 
                 final int program = mSpriteRgbaProgram;
                 GLES20.glUseProgram(program);

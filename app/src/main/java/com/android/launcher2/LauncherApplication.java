@@ -31,6 +31,8 @@ public class LauncherApplication extends Application {
     public void onCreate() {
         super.onCreate();
 
+        Launcher.loadTweaks(this); // Tweaks
+
         mIconCache = new IconCache(this);
         mModel = new LauncherModel(this, mIconCache);
 

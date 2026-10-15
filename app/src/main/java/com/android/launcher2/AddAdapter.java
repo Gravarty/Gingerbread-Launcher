@@ -42,6 +42,7 @@ public class AddAdapter extends BaseAdapter {
     public static final int ITEM_APPWIDGET = 1;
     public static final int ITEM_LIVE_FOLDER = 2;
     public static final int ITEM_WALLPAPER = 3;
+    public static final int ITEM_SETTINGS = 4; // Tweaks
     
     /**
      * Specific item in our list.
@@ -81,6 +82,10 @@ public class AddAdapter extends BaseAdapter {
         
         mItems.add(new ListItem(res, R.string.group_wallpapers,
                 R.drawable.ic_launcher_wallpaper, ITEM_WALLPAPER));
+
+        // Tweaks
+        mItems.add(new ListItem(res, R.string.group_tweaks,
+                android.R.drawable.ic_menu_preferences, ITEM_SETTINGS));
 
     }
 

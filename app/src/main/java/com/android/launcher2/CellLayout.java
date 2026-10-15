@@ -39,6 +39,9 @@ public class CellLayout extends ViewGroup {
 
     private int mCellWidth;
     private int mCellHeight;
+    // Tweaks: cell size from XML, cells shrink below it if the grid doesn't fit
+    private int mMaxCellWidth;
+    private int mMaxCellHeight;
     
     private int mLongAxisStartPadding;
     private int mLongAxisEndPadding;
@@ -93,6 +96,14 @@ public class CellLayout extends ViewGroup {
         mLongAxisCells = a.getInt(R.styleable.CellLayout_longAxisCells, 4);
 
         a.recycle();
+
+        // Tweaks: configurable grid; X is always horizontal, Y vertical
+        mPortrait = context.getResources().getConfiguration().orientation
+                != android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        mShortAxisCells = mPortrait ? Launcher.NUMBER_CELLS_X : Launcher.NUMBER_CELLS_Y;
+        mLongAxisCells = mPortrait ? Launcher.NUMBER_CELLS_Y : Launcher.NUMBER_CELLS_X;
+        mMaxCellWidth = mCellWidth;
+        mMaxCellHeight = mCellHeight;
 
         setAlwaysDrawnWithCacheEnabled(false);
 
@@ -488,10 +499,23 @@ public class CellLayout extends ViewGroup {
         final int longAxisEndPadding = mLongAxisEndPadding;
         final int shortAxisStartPadding = mShortAxisStartPadding;
         final int shortAxisEndPadding = mShortAxisEndPadding;
-        final int cellWidth = mCellWidth;
-        final int cellHeight = mCellHeight;
 
         mPortrait = heightSpecSize > widthSpecSize;
+
+        // Tweaks: shrink cells when more of them are configured than fit
+        if (mPortrait) {
+            mCellWidth = Math.min(mMaxCellWidth, (widthSpecSize - shortAxisStartPadding
+                    - shortAxisEndPadding) / shortAxisCells);
+            mCellHeight = Math.min(mMaxCellHeight, (heightSpecSize - longAxisStartPadding
+                    - longAxisEndPadding) / longAxisCells);
+        } else {
+            mCellWidth = Math.min(mMaxCellWidth, (widthSpecSize - longAxisStartPadding
+                    - longAxisEndPadding) / longAxisCells);
+            mCellHeight = Math.min(mMaxCellHeight, (heightSpecSize - shortAxisStartPadding
+                    - shortAxisEndPadding) / shortAxisCells);
+        }
+        final int cellWidth = mCellWidth;
+        final int cellHeight = mCellHeight;
 
         int numShortGaps = shortAxisCells - 1;
         int numLongGaps = longAxisCells - 1;

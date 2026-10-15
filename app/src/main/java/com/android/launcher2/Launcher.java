@@ -123,8 +123,24 @@ public final class Launcher extends Activity
 
     static final int SCREEN_COUNT = 5;
     static final int DEFAULT_SCREEN = 2;
-    static final int NUMBER_CELLS_X = 4;
-    static final int NUMBER_CELLS_Y = 4;
+    // Tweaks: grid size is configurable (4x4 is the stock value)
+    static int NUMBER_CELLS_X = 4;
+    static int NUMBER_CELLS_Y = 4;
+
+    // Tweaks
+    static final String TWEAKS_PREFERENCES = "launcher.tweaks";
+    static final String TWEAK_HOME_COLUMNS = "home_columns";
+    static final String TWEAK_HOME_ROWS = "home_rows";
+    static final String TWEAK_DRAWER_COLUMNS = "drawer_columns";
+    static final String TWEAK_DRAWER_ROWS = "drawer_rows";
+
+    // Tweaks
+    static void loadTweaks(Context context) {
+        final android.content.SharedPreferences prefs =
+                context.getSharedPreferences(TWEAKS_PREFERENCES, MODE_PRIVATE);
+        NUMBER_CELLS_X = prefs.getInt(TWEAK_HOME_COLUMNS, 4);
+        NUMBER_CELLS_Y = prefs.getInt(TWEAK_HOME_ROWS, 4);
+    }
 
     static final int DIALOG_CREATE_SHORTCUT = 1;
     static final int DIALOG_RENAME_FOLDER = 2;
@@ -241,6 +257,7 @@ public final class Launcher extends Activity
             android.os.Debug.startMethodTracing("/sdcard/launcher");
         }
 
+        loadTweaks(this); // Tweaks
         loadHotseats();
         checkForLocaleChange();
         setWallpaperDimension();
@@ -1611,7 +1628,8 @@ public final class Launcher extends Activity
         openFolder.bind(folderInfo);
         folderInfo.opened = true;
 
-        mWorkspace.addInScreen(openFolder, folderInfo.screen, 0, 0, 4, 4);
+        mWorkspace.addInScreen(openFolder, folderInfo.screen, 0, 0,
+                NUMBER_CELLS_X, NUMBER_CELLS_Y); // Tweaks: was 4, 4
         openFolder.onOpen();
     }
 
@@ -2122,12 +2140,86 @@ public final class Launcher extends Activity
                     startWallpaper();
                     break;
                 }
+
+                case AddAdapter.ITEM_SETTINGS: { // Tweaks
+                    mWaitingForResult = false;
+                    showTweaksDialog();
+                    break;
+                }
             }
         }
 
         public void onShow(DialogInterface dialog) {
             mWaitingForResult = true;            
         }
+    }
+
+    // Tweaks: grid settings dialog
+    private void showTweaksDialog() {
+        final android.content.SharedPreferences prefs =
+                getSharedPreferences(TWEAKS_PREFERENCES, MODE_PRIVATE);
+        final float density = getResources().getDisplayMetrics().density;
+        final int pad = (int) (16 * density);
+
+        final LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(pad, pad / 2, pad, 0);
+
+        final android.widget.NumberPicker homeColumns = addTweakPicker(layout,
+                R.string.tweaks_home_columns, 3, 7, prefs.getInt(TWEAK_HOME_COLUMNS, 4));
+        final android.widget.NumberPicker homeRows = addTweakPicker(layout,
+                R.string.tweaks_home_rows, 3, 8, prefs.getInt(TWEAK_HOME_ROWS, 4));
+        final android.widget.NumberPicker drawerColumns = addTweakPicker(layout,
+                R.string.tweaks_drawer_columns, 3, 7, prefs.getInt(TWEAK_DRAWER_COLUMNS, 4));
+        final android.widget.NumberPicker drawerRows = addTweakPicker(layout,
+                R.string.tweaks_drawer_rows, 0, 8, prefs.getInt(TWEAK_DRAWER_ROWS, 0));
+
+        final android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.addView(layout);
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.group_tweaks)
+                .setView(scroll)
+                .setNegativeButton(R.string.cancel_action, null)
+                .setNeutralButton(R.string.tweaks_reset, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        prefs.edit().clear().apply();
+                        applyTweaks();
+                    }
+                })
+                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        prefs.edit()
+                                .putInt(TWEAK_HOME_COLUMNS, homeColumns.getValue())
+                                .putInt(TWEAK_HOME_ROWS, homeRows.getValue())
+                                .putInt(TWEAK_DRAWER_COLUMNS, drawerColumns.getValue())
+                                .putInt(TWEAK_DRAWER_ROWS, drawerRows.getValue())
+                                .apply();
+                        applyTweaks();
+                    }
+                })
+                .show();
+    }
+
+    // Tweaks
+    private android.widget.NumberPicker addTweakPicker(LinearLayout parent, int label,
+            int min, int max, int value) {
+        final TextView title = new TextView(this);
+        title.setText(label);
+        parent.addView(title);
+        final android.widget.NumberPicker picker = new android.widget.NumberPicker(this);
+        picker.setMinValue(min);
+        picker.setMaxValue(max);
+        picker.setValue(Math.max(min, Math.min(max, value)));
+        picker.setWrapSelectorWheel(false);
+        parent.addView(picker);
+        return picker;
+    }
+
+    // Tweaks: rebuild the workspace and drawer with the new grid
+    private void applyTweaks() {
+        loadTweaks(this);
+        recreate();
     }
 
     /**

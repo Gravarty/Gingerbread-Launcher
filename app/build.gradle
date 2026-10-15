@@ -9,7 +9,7 @@ android {
         minSdk 30
         targetSdk 37
         versionCode 1
-        versionName "2.3.7"
+        versionName "2.3.7-tweaks"
     }
     buildTypes {
         release {
