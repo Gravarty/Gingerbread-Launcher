@@ -297,6 +297,9 @@ public final class Launcher extends Activity
     static final String TWEAK_SWIPE_UP_ALL_APPS = "swipe_up_all_apps";
     // Tweaks: Google feed left of the first screen (FeedOverlay.PROVIDER_*)
     static final String TWEAK_FEED = "feed";
+    // Tweaks: notification badges (TouchWiz 3.0)
+    static final String TWEAK_BADGES = "badges";
+    static boolean BADGES = false;
     static int FEED = FeedOverlay.PROVIDER_OFF;
     static boolean SWIPE_UP_ALL_APPS = false;
     // Tweaks: no black system bars, the wallpaper shows behind them
@@ -332,6 +335,7 @@ public final class Launcher extends Activity
         SWIPE_DOWN_NOTIFICATIONS = prefs.getBoolean(TWEAK_SWIPE_DOWN_NOTIFICATIONS, false);
         SWIPE_UP_ALL_APPS = prefs.getBoolean(TWEAK_SWIPE_UP_ALL_APPS, false);
         FEED = prefs.getInt(TWEAK_FEED, FeedOverlay.PROVIDER_OFF);
+        BADGES = prefs.getBoolean(TWEAK_BADGES, false);
         NO_BAR_BACKGROUNDS = prefs.getBoolean(TWEAK_NO_BAR_BACKGROUNDS, false);
         ICON_SHAPE = Math.max(0, Math.min(Utilities.ICON_SHAPE_MASKS.length - 1,
                 prefs.getInt(TWEAK_ICON_SHAPE, 0)));
@@ -487,6 +491,7 @@ public final class Launcher extends Activity
         setContentView(R.layout.launcher);
         setupViews();
         if (FEED != FeedOverlay.PROVIDER_OFF) mFeed = new FeedOverlay(this, FEED); // Tweaks
+        if (BADGES) BadgeListener.setOnChange(() -> invalidateShortcuts(mWorkspace)); // Tweaks
 
         registerContentObservers();
 
@@ -2457,6 +2462,15 @@ public final class Launcher extends Activity
     // Tweaks: Google feed
     private FeedOverlay mFeed;
 
+    // Tweaks: badges changed
+    private static void invalidateShortcuts(ViewGroup group) {
+        for (int i = group.getChildCount() - 1; i >= 0; i--) {
+            final View v = group.getChildAt(i);
+            if (v instanceof BubbleTextView) v.invalidate();
+            else if (v instanceof ViewGroup) invalidateShortcuts((ViewGroup) v);
+        }
+    }
+
     FeedOverlay getFeed() {
         return mFeed != null && mFeed.isAttached() ? mFeed : null;
     }
@@ -2556,6 +2570,11 @@ public final class Launcher extends Activity
                         R.string.tweaks_icon_shape_squircle,
                         R.string.tweaks_icon_shape_rounded_rect,
                         R.string.tweaks_icon_shape_teardrop, R.string.tweaks_icon_shape_square });
+                addCheck(R.string.tweaks_badges, R.string.tweaks_badges_summary, TWEAK_BADGES);
+                final View access = addItem(R.string.tweaks_badges_access, null);
+                mBadgeAccess = (TextView) access.findViewById(R.id.settings_item_summary);
+                access.setOnClickListener(v -> startActivity(new Intent(
+                        android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
                 addCategory(R.string.tweaks_icon_pack);
                 addIconPack();
                 addChoice(R.string.tweaks_icon_pack_where, TWEAK_ICON_PACK_EVERYWHERE,
@@ -2580,6 +2599,17 @@ public final class Launcher extends Activity
                 addPage(R.string.tweaks_category_icons, R.string.tweaks_icons_summary);
                 addItem(R.string.tweaks_reset_title, getString(R.string.tweaks_reset_summary))
                         .setOnClickListener(v -> confirmReset());
+            }
+        }
+
+        private TextView mBadgeAccess; // Tweaks: notification access for the badges
+
+        @Override
+        protected void onResume() {
+            super.onResume();
+            if (mBadgeAccess != null) {
+                setSummary(mBadgeAccess, getString(BadgeListener.isEnabled(this)
+                        ? R.string.tweaks_badges_access_on : R.string.tweaks_badges_access_off));
             }
         }
 

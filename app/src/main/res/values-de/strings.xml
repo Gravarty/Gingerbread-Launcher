@@ -136,4 +136,9 @@
     <string name="tweaks_feed_off">"Aus"</string>
     <string name="tweaks_feed_google">"Google-App"</string>
     <string name="tweaks_feed_aidl_bridge">"AIDL Bridge"</string>
+    <string name="tweaks_badges">"Benachrichtigungs-Badges"</string>
+    <string name="tweaks_badges_summary">"Anzahl der Benachrichtigungen an den Symbolen auf dem Startbildschirm (TouchWiz)"</string>
+    <string name="tweaks_badges_access">"Zugriff auf Benachrichtigungen"</string>
+    <string name="tweaks_badges_access_on">"Erlaubt"</string>
+    <string name="tweaks_badges_access_off">"Nicht erlaubt – zum Erlauben tippen"</string>
 </resources>

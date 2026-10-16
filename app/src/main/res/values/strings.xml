@@ -221,4 +221,9 @@
     <string name="tweaks_feed_off">"Off"</string>
     <string name="tweaks_feed_google">"Google app"</string>
     <string name="tweaks_feed_aidl_bridge">"AIDL Bridge"</string>
+    <string name="tweaks_badges">"Notification badges"</string>
+    <string name="tweaks_badges_summary">"Show the number of notifications on the home screen icons (TouchWiz)"</string>
+    <string name="tweaks_badges_access">"Notification access"</string>
+    <string name="tweaks_badges_access_on">"Allowed"</string>
+    <string name="tweaks_badges_access_off">"Not allowed – tap to allow"</string>
 </resources>

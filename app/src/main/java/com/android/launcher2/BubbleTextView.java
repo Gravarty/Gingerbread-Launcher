@@ -21,6 +21,7 @@ import android.content.Context;
 import android.util.AttributeSet;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.text.Layout;
@@ -167,6 +168,61 @@ public class BubbleTextView extends TextView {
         canvas.drawRoundRect(rect, mCornerRadius, mCornerRadius, mPaint);
 
         super.draw(canvas);
+        if (Launcher.BADGES) drawBadge(canvas); // Tweaks
+    }
+
+    // Tweaks: notification badge of TouchWiz 3.0 (Galaxy S II, 2.3), BubbleTextView.drawBadge()
+    // of TouchWiz30Launcher with its resources: homescreen_menu_noti_bg, badge_fontSizeNormal
+    // 16dp, badge_fontSizeSmall 12dp (100 and more), badge_widthCenterToCenterOffset 21dp,
+    // badge_topToTopOffset -1.34dp. The offset from the center follows the icon size
+    // (Utilities.iconScale(), TouchWiz's icons were 48dp).
+    private Drawable mBadgeDrawable;
+    private Paint mBadgeTextPaint;
+    private final Rect mBadgePadding = new Rect();
+    private final Rect mBadgeTextBounds = new Rect();
+
+    private void drawBadge(Canvas canvas) {
+        final Object tag = getTag();
+        if (!(tag instanceof ShortcutInfo)) return;
+        final android.content.Intent intent = ((ShortcutInfo) tag).intent;
+        if (intent == null) return;
+        final String pkg = intent.getComponent() != null
+                ? intent.getComponent().getPackageName() : intent.getPackage();
+        final int count = BadgeListener.getCount(pkg);
+        if (count <= 0) return;
+
+        final android.content.res.Resources res = getResources();
+        final float density = res.getDisplayMetrics().density;
+        if (mBadgeDrawable == null) {
+            mBadgeDrawable = res.getDrawable(R.drawable.tw_badge_bg);
+            mBadgeTextPaint = new Paint();
+            mBadgeTextPaint.setAntiAlias(true);
+            mBadgeTextPaint.setColor(0xffffffff);
+            mBadgeTextPaint.setTextAlign(Paint.Align.CENTER);
+        }
+        mBadgeTextPaint.setTypeface(getPaint().getTypeface());
+        mBadgeTextPaint.setTextSize(Math.round((count >= 100 ? 12 : 16) * density));
+
+        final int iwidth = mBadgeDrawable.getIntrinsicWidth();
+        final int iheight = mBadgeDrawable.getIntrinsicHeight();
+        mBadgeDrawable.getPadding(mBadgePadding);
+        final Rect p = mBadgePadding;
+        final int defaultContentsWidth = iwidth - p.left - p.right;
+        final int defaultContentsHeight = iheight - p.top - p.bottom;
+        final String badgeText = Integer.toString(count);
+        mBadgeTextPaint.getTextBounds(badgeText, 0, badgeText.length(), mBadgeTextBounds);
+        final int contentsWidth = Math.max(mBadgeTextBounds.width(), defaultContentsWidth);
+        final int contentsHeight = Math.max(mBadgeTextBounds.height(), defaultContentsHeight);
+        final int width = contentsWidth + p.left + p.right;
+        final int height = contentsHeight + p.top + p.bottom;
+        final int left = getScrollX() + (getWidth() - width) / 2
+                + Math.round(21 * density * Utilities.iconScale(getContext()));
+        final int top = getScrollY() + getPaddingTop() + Math.round(-1.34f * density);
+        mBadgeDrawable.setBounds(left, top, left + width, top + height);
+        mBadgeDrawable.draw(canvas);
+        canvas.drawText(badgeText, width / 2 + left + 1,
+                height / 2 + top - (mBadgeTextPaint.ascent() + mBadgeTextPaint.descent()) / 2f
+                        - 1f, mBadgeTextPaint);
     }
 
     @Override
