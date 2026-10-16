@@ -601,7 +601,10 @@ public final class Launcher extends Activity
         setContentView(R.layout.launcher);
         setupViews();
         if (FEED != FeedOverlay.PROVIDER_OFF) mFeed = new FeedOverlay(this, FEED); // Tweaks
-        if (BADGES) BadgeListener.setOnChange(() -> invalidateShortcuts(mWorkspace)); // Tweaks
+        if (BADGES) BadgeListener.setOnChange(() -> { // Tweaks
+            invalidateShortcuts(mWorkspace);
+            for (Drawable d : mDockBadges) d.invalidateSelf();
+        });
 
         registerContentObservers();
 
@@ -1161,6 +1164,7 @@ public final class Launcher extends Activity
         hotseatRight.setContentDescription(mHotseatLabels[1]);
         hotseatRight.setImageDrawable(mHotseatIcons[1]);
         setupDock(hotseatLeft, hotseatRight); // Tweaks
+        if (BADGES) addDockBadges(hotseatLeft, hotseatRight); // Tweaks
 
         mPreviousView = (ImageView) dragLayer.findViewById(R.id.previous_screen);
         mNextView = (ImageView) dragLayer.findViewById(R.id.next_screen);
@@ -2575,6 +2579,40 @@ public final class Launcher extends Activity
 
     // Tweaks: Google feed
     private FeedOverlay mFeed;
+
+    // Tweaks: notification badges on the dock buttons (phone, browser and the extra slots)
+    private final java.util.ArrayList<Drawable> mDockBadges = new java.util.ArrayList<Drawable>();
+
+    private void addDockBadges(ImageView phone, ImageView browser) {
+        // the labels' font (Droid Sans or the system font, see useDroidSans())
+        final android.graphics.Typeface typeface = new TextView(this).getTypeface();
+        final java.util.ArrayList<ImageView> buttons = new java.util.ArrayList<ImageView>();
+        buttons.add(phone);
+        buttons.add(browser);
+        collectDockExtras((ViewGroup) findViewById(R.id.all_apps_button_cluster), buttons);
+        for (final ImageView b : buttons) {
+            final int index = b == phone ? 0 : b == browser ? 1 : (Integer) b.getTag();
+            final Drawable badge = new BubbleTextView.DockBadge(b, () -> {
+                final Intent intent = mHotseats != null && index < mHotseats.length
+                        ? mHotseats[index] : null;
+                if (intent == null) return null;
+                return intent.getComponent() != null
+                        ? intent.getComponent().getPackageName() : intent.getPackage();
+            }, typeface);
+            b.getOverlay().add(badge);
+            b.addOnLayoutChangeListener((v, l, t, r, bo, ol, ot, or, ob) ->
+                    badge.setBounds(0, 0, r - l, bo - t));
+            mDockBadges.add(badge);
+        }
+    }
+
+    private static void collectDockExtras(ViewGroup group, java.util.List<ImageView> out) {
+        for (int i = 0; i < group.getChildCount(); i++) {
+            final View v = group.getChildAt(i);
+            if (v instanceof ImageView && v.getTag() instanceof Integer) out.add((ImageView) v);
+            else if (v instanceof ViewGroup) collectDockExtras((ViewGroup) v, out);
+        }
+    }
 
     // Tweaks: badges changed
     private static void invalidateShortcuts(ViewGroup group) {

@@ -176,10 +176,10 @@ public class BubbleTextView extends TextView {
     // 16dp, badge_fontSizeSmall 12dp (100 and more), badge_widthCenterToCenterOffset 21dp,
     // badge_topToTopOffset -1.34dp. The offset from the center follows the icon size
     // (Utilities.iconScale(), TouchWiz's icons were 48dp).
-    private Drawable mBadgeDrawable;
-    private Paint mBadgeTextPaint;
-    private final Rect mBadgePadding = new Rect();
-    private final Rect mBadgeTextBounds = new Rect();
+    private static Drawable sBadgeDrawable;
+    private static Paint sBadgeTextPaint;
+    private static final Rect sBadgePadding = new Rect();
+    private static final Rect sBadgeTextBounds = new Rect();
 
     private void drawBadge(Canvas canvas) {
         final Object tag = getTag();
@@ -190,39 +190,92 @@ public class BubbleTextView extends TextView {
                 ? intent.getComponent().getPackageName() : intent.getPackage();
         final int count = BadgeListener.getCount(pkg);
         if (count <= 0) return;
+        drawBadge(getContext(), canvas, getPaint().getTypeface(), count, getScrollX(),
+                getWidth(), getScrollY() + getPaddingTop(), Utilities.iconScale(getContext()));
+    }
 
-        final android.content.res.Resources res = getResources();
+    /**
+     * Tweaks: the badge for an icon whose top is iconTop and which is centered in the
+     * width baseWidth from baseLeft; centerOffsetScale scales the offset from the center.
+     */
+    static void drawBadge(android.content.Context context, Canvas canvas,
+            android.graphics.Typeface typeface, int count, int baseLeft, int baseWidth,
+            int iconTop, float centerOffsetScale) {
+        final android.content.res.Resources res = context.getResources();
         final float density = res.getDisplayMetrics().density;
-        if (mBadgeDrawable == null) {
-            mBadgeDrawable = res.getDrawable(R.drawable.tw_badge_bg);
-            mBadgeTextPaint = new Paint();
-            mBadgeTextPaint.setAntiAlias(true);
-            mBadgeTextPaint.setColor(0xffffffff);
-            mBadgeTextPaint.setTextAlign(Paint.Align.CENTER);
+        if (sBadgeDrawable == null) {
+            sBadgeDrawable = res.getDrawable(R.drawable.tw_badge_bg);
+            sBadgeTextPaint = new Paint();
+            sBadgeTextPaint.setAntiAlias(true);
+            sBadgeTextPaint.setColor(0xffffffff);
+            sBadgeTextPaint.setTextAlign(Paint.Align.CENTER);
         }
-        mBadgeTextPaint.setTypeface(getPaint().getTypeface());
-        mBadgeTextPaint.setTextSize(Math.round((count >= 100 ? 12 : 16) * density));
+        final Drawable badge = sBadgeDrawable;
+        final Paint paint = sBadgeTextPaint;
+        paint.setTypeface(typeface);
+        paint.setTextSize(Math.round((count >= 100 ? 12 : 16) * density));
 
-        final int iwidth = mBadgeDrawable.getIntrinsicWidth();
-        final int iheight = mBadgeDrawable.getIntrinsicHeight();
-        mBadgeDrawable.getPadding(mBadgePadding);
-        final Rect p = mBadgePadding;
+        final int iwidth = badge.getIntrinsicWidth();
+        final int iheight = badge.getIntrinsicHeight();
+        badge.getPadding(sBadgePadding);
+        final Rect p = sBadgePadding;
         final int defaultContentsWidth = iwidth - p.left - p.right;
         final int defaultContentsHeight = iheight - p.top - p.bottom;
         final String badgeText = Integer.toString(count);
-        mBadgeTextPaint.getTextBounds(badgeText, 0, badgeText.length(), mBadgeTextBounds);
-        final int contentsWidth = Math.max(mBadgeTextBounds.width(), defaultContentsWidth);
-        final int contentsHeight = Math.max(mBadgeTextBounds.height(), defaultContentsHeight);
+        paint.getTextBounds(badgeText, 0, badgeText.length(), sBadgeTextBounds);
+        final int contentsWidth = Math.max(sBadgeTextBounds.width(), defaultContentsWidth);
+        final int contentsHeight = Math.max(sBadgeTextBounds.height(), defaultContentsHeight);
         final int width = contentsWidth + p.left + p.right;
         final int height = contentsHeight + p.top + p.bottom;
-        final int left = getScrollX() + (getWidth() - width) / 2
-                + Math.round(21 * density * Utilities.iconScale(getContext()));
-        final int top = getScrollY() + getPaddingTop() + Math.round(-1.34f * density);
-        mBadgeDrawable.setBounds(left, top, left + width, top + height);
-        mBadgeDrawable.draw(canvas);
+        final int left = baseLeft + (baseWidth - width) / 2
+                + Math.round(21 * density * centerOffsetScale);
+        final int top = iconTop + Math.round(-1.34f * density);
+        badge.setBounds(left, top, left + width, top + height);
+        badge.draw(canvas);
         canvas.drawText(badgeText, width / 2 + left + 1,
-                height / 2 + top - (mBadgeTextPaint.ascent() + mBadgeTextPaint.descent()) / 2f
-                        - 1f, mBadgeTextPaint);
+                height / 2 + top - (paint.ascent() + paint.descent()) / 2f - 1f, paint);
+    }
+
+    /**
+     * Tweaks: the badge on a dock button, scaled with its icon (TouchWiz's badge is sized for
+     * 48dp icons, the dock's are smaller); drawn in the button's overlay.
+     */
+    static final class DockBadge extends Drawable {
+        private final android.widget.ImageView mButton;
+        private final java.util.function.Supplier<String> mPackage;
+        private final android.graphics.Typeface mTypeface;
+
+        DockBadge(android.widget.ImageView button, java.util.function.Supplier<String> pkg,
+                android.graphics.Typeface typeface) {
+            mButton = button;
+            mPackage = pkg;
+            mTypeface = typeface;
+        }
+
+        @Override
+        public void draw(Canvas canvas) {
+            if (!Launcher.BADGES) return;
+            final int count = BadgeListener.getCount(mPackage.get());
+            final Drawable icon = mButton.getDrawable();
+            if (count <= 0 || icon == null) return;
+            final android.view.View v = mButton;
+            final int contentLeft = v.getPaddingLeft();
+            final int contentWidth = v.getWidth() - v.getPaddingLeft() - v.getPaddingRight();
+            final int contentHeight = v.getHeight() - v.getPaddingTop() - v.getPaddingBottom();
+            final int iconTop = v.getPaddingTop()
+                    + (contentHeight - icon.getIntrinsicHeight()) / 2; // scaleType center
+            final float scale = icon.getIntrinsicWidth()
+                    / (48 * v.getResources().getDisplayMetrics().density);
+            final int count2 = canvas.save();
+            canvas.scale(scale, scale, contentLeft + contentWidth / 2f, iconTop);
+            drawBadge(v.getContext(), canvas, mTypeface, count, contentLeft, contentWidth,
+                    iconTop, 1f);
+            canvas.restoreToCount(count2);
+        }
+
+        @Override public void setAlpha(int alpha) { }
+        @Override public void setColorFilter(android.graphics.ColorFilter cf) { }
+        @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
     }
 
     @Override
