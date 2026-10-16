@@ -125,6 +125,17 @@ public class SearchWidgetProvider extends BroadcastReceiver {
         return state;
     }
 
+    // Tweaks
+    public static final String GOOGLE_PACKAGE = "com.google.android.googlequicksearchbox";
+
+    private static boolean isGoogleAppInstalled(Context context) {
+        try {
+            return context.getPackageManager().getApplicationInfo(GOOGLE_PACKAGE, 0).enabled;
+        } catch (PackageManager.NameNotFoundException e) {
+            return false;
+        }
+    }
+
     /** VoiceSearch.createVoiceWebSearchIntent() */
     private static Intent createVoiceWebSearchIntent(Context context, Bundle appData) {
         Intent intent = new Intent(RecognizerIntent.ACTION_WEB_SEARCH);
@@ -172,7 +183,10 @@ public class SearchWidgetProvider extends BroadcastReceiver {
             if (DBG) Log.d(TAG, "Updating appwidget " + mAppWidgetId);
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.search_widget);
             // Corpus indicator
-            views.setImageViewResource(R.id.corpus_indicator, R.drawable.search_app_icon);
+            // Tweaks: Google Search's "g" (search_app_icon of Google Search 1.1) when the
+            // Google app is installed, as with the Google Search widget back then
+            views.setImageViewResource(R.id.corpus_indicator, isGoogleAppInstalled(context)
+                    ? R.drawable.google_search_app_icon : R.drawable.search_app_icon);
             setOnClickActivityIntent(context, views, R.id.corpus_indicator,
                     mCorpusIndicatorIntent, 0);
             // Query TextView

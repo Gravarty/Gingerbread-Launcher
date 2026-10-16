@@ -54,6 +54,20 @@ public class LauncherApplication extends Application {
 
         updateOwnWidgets();
 
+        // Tweaks: the search widget shows Google's icon while the Google app is installed
+        filter = new IntentFilter(Intent.ACTION_PACKAGE_ADDED);
+        filter.addAction(Intent.ACTION_PACKAGE_REMOVED);
+        filter.addAction(Intent.ACTION_PACKAGE_CHANGED);
+        filter.addDataScheme("package");
+        filter.addDataSchemeSpecificPart(
+                com.android.quicksearchbox.SearchWidgetProvider.GOOGLE_PACKAGE, 0);
+        registerReceiver(new android.content.BroadcastReceiver() {
+            @Override
+            public void onReceive(android.content.Context context, Intent intent) {
+                com.android.quicksearchbox.SearchWidgetProvider.updateSearchWidgets(context);
+            }
+        }, filter, RECEIVER_EXPORTED);
+
         // Port: the "Power Control" widget no longer gets these as a manifest receiver
         final android.content.BroadcastReceiver powerWidget =
                 new android.content.BroadcastReceiver() {
