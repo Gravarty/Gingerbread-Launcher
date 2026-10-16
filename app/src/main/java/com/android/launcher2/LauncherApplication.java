@@ -54,7 +54,7 @@ public class LauncherApplication extends Application {
 
         updateOwnWidgets();
 
-        // Tweaks: the search widget shows Google's icon while the Google app is installed
+        // Port: the search widget shows Google's icon while the Google app is installed
         filter = new IntentFilter(Intent.ACTION_PACKAGE_ADDED);
         filter.addAction(Intent.ACTION_PACKAGE_REMOVED);
         filter.addAction(Intent.ACTION_PACKAGE_CHANGED);

@@ -125,7 +125,7 @@ public class SearchWidgetProvider extends BroadcastReceiver {
         return state;
     }
 
-    // Tweaks
+    // Port: the Google Search icon
     public static final String GOOGLE_PACKAGE = "com.google.android.googlequicksearchbox";
 
     private static boolean isGoogleAppInstalled(Context context) {
@@ -183,7 +183,7 @@ public class SearchWidgetProvider extends BroadcastReceiver {
             if (DBG) Log.d(TAG, "Updating appwidget " + mAppWidgetId);
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.search_widget);
             // Corpus indicator
-            // Tweaks: Google Search's "g" (search_app_icon of Google Search 1.1) when the
+            // Port: Google Search's "g" (search_app_icon of Google Search 1.1) when the
             // Google app is installed, as with the Google Search widget back then
             views.setImageViewResource(R.id.corpus_indicator, isGoogleAppInstalled(context)
                     ? R.drawable.google_search_app_icon : R.drawable.search_app_icon);
