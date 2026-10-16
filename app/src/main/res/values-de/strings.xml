@@ -82,10 +82,10 @@
     <string name="tweaks_category_screens">"Seiten"</string>
     <string name="tweaks_category_gestures">"Gesten"</string>
     <string name="tweaks_category_apps">"Apps"</string>
-    <string name="tweaks_category_dock_apps">"Zusätzliche Apps"</string>
+    <string name="tweaks_category_dock_apps">"Apps im Dock"</string>
     <string name="tweaks_home_summary">"Raster, Seiten, Gesten"</string>
     <string name="tweaks_drawer_summary">"Raster, ausgeblendete Apps"</string>
-    <string name="tweaks_dock_summary">"Zusätzliche Apps im Dock"</string>
+    <string name="tweaks_dock_summary">"Apps und Reihenfolge im Dock"</string>
     <string name="tweaks_category_home">"Startbildschirm"</string>
     <string name="tweaks_category_drawer">"App-Drawer"</string>
     <string name="tweaks_columns">"Spalten"</string>
@@ -142,4 +142,7 @@
     <string name="tweaks_badges_access_off">"Nicht erlaubt – zum Erlauben tippen"</string>
     <string name="tweaks_color_wallpaper">"Vom Hintergrund"</string>
     <string name="tweaks_color_own">"Eigene Farbe"</string>
+    <string name="tweaks_dock_phone">"Telefon"</string>
+    <string name="tweaks_dock_all_apps">"Alle Apps"</string>
+    <string name="tweaks_dock_browser">"Browser"</string>
 </resources>

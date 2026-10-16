@@ -159,93 +159,167 @@ public final class Launcher extends Activity
             R.string.tweaks_dock_messaging, R.string.tweaks_dock_mail,
             R.string.tweaks_dock_camera };
 
-    /**
-     * Tweaks: insert the enabled extra dock buttons. Without extras nothing is touched.
-     * New buttons are inflated with the stock HotseatButton styles; the stock phone and
-     * browser buttons only get re-anchored, and the browser button its center background
-     * when it's no longer the outermost one.
-     */
-    private void setupDockExtras(ImageView phone, ImageView browser) {
-        final android.content.SharedPreferences prefs =
-                getSharedPreferences(TWEAKS_PREFERENCES, MODE_PRIVATE);
-        final boolean[] on = new boolean[DOCK_KEYS.length];
-        boolean any = false;
-        for (int i = 0; i < DOCK_KEYS.length; i++) {
-            on[i] = prefs.getBoolean(DOCK_KEYS[i], false);
-            any |= on[i];
+    // Tweaks: dock order and visibility, "id:1,id:0,..." (logical order: left to right in
+    // portrait, bottom to top in landscape). Default: the stock dock, phone, all apps, browser.
+    static final String TWEAK_DOCK = "dock";
+    static final String DOCK_PHONE = "phone", DOCK_ALL_APPS = "all_apps",
+            DOCK_BROWSER = "browser";
+    static final String[] DOCK_EXTRA_IDS = { "contacts", "messaging", "mail", "camera" };
+    private static final String[] DOCK_STOCK = { DOCK_PHONE, DOCK_ALL_APPS, DOCK_BROWSER };
+
+    /** Tweaks: the dock items in order, each "id" or "-id" when it's hidden. */
+    static java.util.ArrayList<String> loadDock(android.content.SharedPreferences prefs) {
+        final java.util.ArrayList<String> items = new java.util.ArrayList<String>();
+        final String saved = prefs.getString(TWEAK_DOCK, null);
+        if (saved != null) {
+            for (String item : saved.split(",")) {
+                if (item.length() > 1) items.add(item);
+            }
+        } else {
+            // Order of the former extra slots: phone, [contacts], [messaging], (all apps),
+            // browser, [email], [camera]
+            items.add(DOCK_PHONE);
+            for (int i = 0; i < 2; i++) {
+                items.add((prefs.getBoolean(DOCK_KEYS[i], false) ? "" : "-") + DOCK_EXTRA_IDS[i]);
+            }
+            items.add(DOCK_ALL_APPS);
+            items.add(DOCK_BROWSER);
+            for (int i = 2; i < 4; i++) {
+                items.add((prefs.getBoolean(DOCK_KEYS[i], false) ? "" : "-") + DOCK_EXTRA_IDS[i]);
+            }
         }
-        if (!any) return;
+        // items added later or missing: hidden at the end
+        for (String id : allDockIds()) {
+            if (!items.contains(id) && !items.contains("-" + id)) items.add("-" + id);
+        }
+        return items;
+    }
+
+    static String[] allDockIds() {
+        return new String[] { DOCK_PHONE, DOCK_EXTRA_IDS[0], DOCK_EXTRA_IDS[1], DOCK_ALL_APPS,
+                DOCK_BROWSER, DOCK_EXTRA_IDS[2], DOCK_EXTRA_IDS[3] };
+    }
+
+    static int dockLabel(String id) {
+        if (DOCK_PHONE.equals(id)) return R.string.tweaks_dock_phone;
+        if (DOCK_ALL_APPS.equals(id)) return R.string.tweaks_dock_all_apps;
+        if (DOCK_BROWSER.equals(id)) return R.string.tweaks_dock_browser;
+        for (int i = 0; i < DOCK_EXTRA_IDS.length; i++) {
+            if (DOCK_EXTRA_IDS[i].equals(id)) return DOCK_LABELS[i];
+        }
+        return 0;
+    }
+
+    /**
+     * Tweaks: the dock in the chosen order. With the default (phone, all apps, browser)
+     * nothing is touched. Otherwise the buttons are put into a centered row: the outermost
+     * ones get the stock left and right backgrounds and margins, the others the center
+     * background (the HotseatButton styles); new buttons are inflated with those styles.
+     */
+    private void setupDock(ImageView phone, ImageView browser) {
+        final java.util.ArrayList<String> shown = new java.util.ArrayList<String>();
+        for (String item : loadDock(getSharedPreferences(TWEAKS_PREFERENCES, MODE_PRIVATE))) {
+            if (!item.startsWith("-")) shown.add(item);
+        }
+        if (shown.equals(java.util.Arrays.asList(DOCK_STOCK))) return;
 
         final android.widget.RelativeLayout cluster =
                 (android.widget.RelativeLayout) findViewById(R.id.all_apps_button_cluster);
+        final View allApps = findViewById(R.id.all_apps_button);
         final boolean landscape = getResources().getConfiguration().orientation
                 == Configuration.ORIENTATION_LANDSCAPE;
-        final int toOuterLeft = landscape ? android.widget.RelativeLayout.BELOW
-                : android.widget.RelativeLayout.LEFT_OF;
-        final int toOuterRight = landscape ? android.widget.RelativeLayout.ABOVE
-                : android.widget.RelativeLayout.RIGHT_OF;
-        final java.util.ArrayList<ImageView> added = new java.util.ArrayList<ImageView>();
 
-        // Left: all apps <- messaging <- contacts <- phone
-        int anchor = R.id.all_apps_button;
-        for (int slot : new int[] { 1, 0 }) {
-            if (!on[slot]) continue;
-            final ImageView b = addDockButton(cluster, R.layout.hotseat_extra, slot);
-            ((android.widget.RelativeLayout.LayoutParams) b.getLayoutParams())
-                    .addRule(toOuterLeft, anchor);
-            anchor = b.getId();
-            added.add(b);
-        }
-        ((android.widget.RelativeLayout.LayoutParams) phone.getLayoutParams())
-                .addRule(toOuterLeft, anchor);
+        // the stock looks: phone is the left button, browser the right one
+        final ViewGroup.MarginLayoutParams leftLp =
+                (ViewGroup.MarginLayoutParams) phone.getLayoutParams();
+        final ViewGroup.MarginLayoutParams rightLp =
+                (ViewGroup.MarginLayoutParams) browser.getLayoutParams();
+        final Drawable.ConstantState leftBg = phone.getBackground().getConstantState();
+        final Drawable.ConstantState rightBg = browser.getBackground().getConstantState();
+        final Drawable.ConstantState centerBg = getLayoutInflater().inflate(
+                R.layout.hotseat_extra, cluster, false).getBackground().getConstantState();
+        final int[] leftMargins = { leftLp.leftMargin, leftLp.topMargin, leftLp.rightMargin,
+                leftLp.bottomMargin };
+        final int[] rightMargins = { rightLp.leftMargin, rightLp.topMargin,
+                rightLp.rightMargin, rightLp.bottomMargin };
 
-        // Right: all apps -> browser -> email -> camera
-        anchor = R.id.hotseat_right;
-        final int lastRight = on[3] ? 3 : (on[2] ? 2 : -1);
-        for (int slot : new int[] { 2, 3 }) {
-            if (!on[slot]) continue;
-            final ImageView b = addDockButton(cluster, slot == lastRight
-                    ? R.layout.hotseat_extra_right : R.layout.hotseat_extra, slot);
-            ((android.widget.RelativeLayout.LayoutParams) b.getLayoutParams())
-                    .addRule(toOuterRight, anchor);
-            anchor = b.getId();
-            added.add(b);
+        cluster.removeView(phone);
+        cluster.removeView(browser);
+        if (!shown.contains(DOCK_ALL_APPS)) {
+            allApps.setVisibility(View.GONE); // stays for the code that refers to it
+        } else {
+            cluster.removeView(allApps);
         }
-        if (lastRight >= 0) {
-            // browser is now inside the dock: HotseatButton instead of HotseatButton.Right
-            final ImageView ref = (ImageView) getLayoutInflater().inflate(
-                    R.layout.hotseat_extra, cluster, false);
+
+        final LinearLayout row = new LinearLayout(this);
+        row.setOrientation(landscape ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
+        final android.widget.RelativeLayout.LayoutParams rowLp;
+        if (landscape) {
+            rowLp = new android.widget.RelativeLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            rowLp.addRule(android.widget.RelativeLayout.CENTER_VERTICAL);
+        } else {
+            rowLp = new android.widget.RelativeLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            rowLp.addRule(android.widget.RelativeLayout.CENTER_HORIZONTAL);
+            rowLp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_BOTTOM);
+        }
+        cluster.addView(row, rowLp);
+
+        final java.util.ArrayList<View> buttons = new java.util.ArrayList<View>();
+        for (int i = 0; i < shown.size(); i++) {
+            final String id = shown.get(i);
+            final View b;
+            if (DOCK_PHONE.equals(id)) {
+                b = phone;
+            } else if (DOCK_BROWSER.equals(id)) {
+                b = browser;
+            } else if (DOCK_ALL_APPS.equals(id)) {
+                b = allApps;
+            } else {
+                b = newDockButton(cluster, java.util.Arrays.asList(DOCK_EXTRA_IDS).indexOf(id));
+            }
+            final boolean first = i == 0, last = i == shown.size() - 1;
             // setBackground() would replace the style's padding with the 9-patch padding
-            final int pl = browser.getPaddingLeft(), pt = browser.getPaddingTop(),
-                    pr = browser.getPaddingRight(), pb = browser.getPaddingBottom();
-            browser.setBackground(ref.getBackground());
-            browser.setPadding(pl, pt, pr, pb);
-            final ViewGroup.MarginLayoutParams lp =
-                    (ViewGroup.MarginLayoutParams) browser.getLayoutParams();
-            lp.topMargin = lp.rightMargin = 0;
+            final int pl = b.getPaddingLeft(), pt = b.getPaddingTop(),
+                    pr = b.getPaddingRight(), pb = b.getPaddingBottom();
+            b.setBackground((first ? leftBg : last ? rightBg : centerBg).newDrawable());
+            b.setPadding(pl, pt, pr, pb);
+            final LinearLayout.LayoutParams lp = landscape
+                    ? new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT)
+                    : new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT);
+            final int[] m = first ? leftMargins : last ? rightMargins : new int[4];
+            lp.setMargins(m[0], m[1], m[2], m[3]);
+            b.setLayoutParams(lp);
+            buttons.add(b);
+        }
+        // landscape: the logical order runs from the bottom up
+        for (int i = 0; i < buttons.size(); i++) {
+            row.addView(buttons.get(landscape ? buttons.size() - 1 - i : i));
         }
 
         // Only if the buttons don't fit: shrink their side padding evenly
         final android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
         final int available = landscape ? dm.heightPixels : dm.widthPixels;
-        final java.util.ArrayList<View> all = new java.util.ArrayList<View>(added);
-        all.add(phone);
-        all.add(browser);
-        all.add(findViewById(R.id.all_apps_button));
-        int needed = (int) (8 * dm.density); // outer margins
+        int needed = 0;
         int paddings = 0;
-        for (View v : all) {
-            final android.graphics.drawable.Drawable d = ((ImageView) v).getDrawable();
+        for (View v : buttons) {
+            final Drawable d = ((ImageView) v).getDrawable();
             final int content = d == null ? 0
                     : (landscape ? d.getIntrinsicHeight() : d.getIntrinsicWidth());
             final int pad = landscape ? v.getPaddingTop() + v.getPaddingBottom()
                     : v.getPaddingLeft() + v.getPaddingRight();
-            needed += content + pad;
+            final ViewGroup.MarginLayoutParams lp =
+                    (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+            needed += content + pad + (landscape ? lp.topMargin + lp.bottomMargin
+                    : lp.leftMargin + lp.rightMargin);
             paddings += pad;
         }
         if (needed > available && paddings > 0) {
             final float scale = Math.max(0f, 1f - (float) (needed - available) / paddings);
-            for (View v : all) {
+            for (View v : buttons) {
                 if (landscape) {
                     v.setPadding(v.getPaddingLeft(), (int) (v.getPaddingTop() * scale),
                             v.getPaddingRight(), (int) (v.getPaddingBottom() * scale));
@@ -283,13 +357,13 @@ public final class Launcher extends Activity
         }
     }
 
-    private ImageView addDockButton(ViewGroup cluster, int layout, int slot) {
-        final ImageView b = (ImageView) getLayoutInflater().inflate(layout, cluster, false);
+    private ImageView newDockButton(ViewGroup cluster, int slot) {
+        final ImageView b = (ImageView) getLayoutInflater().inflate(
+                R.layout.hotseat_extra, cluster, false);
         b.setId(View.generateViewId());
         b.setTag(slot + 2); // index in mHotseats
         b.setImageDrawable(mHotseatIcons[slot + 2]);
         b.setContentDescription(mHotseatLabels[slot + 2]);
-        cluster.addView(b);
         return b;
     }
     static boolean SWIPE_DOWN_NOTIFICATIONS = false;
@@ -1071,7 +1145,7 @@ public final class Launcher extends Activity
         ImageView hotseatRight = (ImageView) findViewById(R.id.hotseat_right);
         hotseatRight.setContentDescription(mHotseatLabels[1]);
         hotseatRight.setImageDrawable(mHotseatIcons[1]);
-        setupDockExtras(hotseatLeft, hotseatRight); // Tweaks
+        setupDock(hotseatLeft, hotseatRight); // Tweaks
 
         mPreviousView = (ImageView) dragLayer.findViewById(R.id.previous_screen);
         mNextView = (ImageView) dragLayer.findViewById(R.id.next_screen);
@@ -2614,9 +2688,7 @@ public final class Launcher extends Activity
                         DEFAULT_ICON_PACK_BG);
             } else if (page == R.string.tweaks_dock) {
                 addCategory(R.string.tweaks_category_dock_apps);
-                for (int i = 0; i < DOCK_KEYS.length; i++) {
-                    addCheck(DOCK_LABELS[i], 0, DOCK_KEYS[i]);
-                }
+                addDockList();
             } else {
                 addPage(R.string.tweaks_category_home, R.string.tweaks_home_summary);
                 addPage(R.string.tweaks_category_drawer, R.string.tweaks_drawer_summary);
@@ -2636,6 +2708,108 @@ public final class Launcher extends Activity
                 setSummary(mBadgeAccess, getString(BadgeListener.isEnabled(this)
                         ? R.string.tweaks_badges_access_on : R.string.tweaks_badges_access_off));
             }
+        }
+
+        /**
+         * Tweaks: the dock items, shown with a check box and sorted with the handle on the
+         * right (dragged up or down).
+         */
+        private void addDockList() {
+            final LinearLayout list = new LinearLayout(this);
+            list.setOrientation(LinearLayout.VERTICAL);
+            list.setDividerDrawable(getResources().getDrawable(
+                    R.drawable.gb_divider_horizontal_dark_opaque));
+            list.setShowDividers(LinearLayout.SHOW_DIVIDER_MIDDLE);
+            mList.addView(list, new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT));
+            mLastWasItem = true;
+            final int dividerHeight = list.getDividerDrawable().getIntrinsicHeight();
+            final float density = getResources().getDisplayMetrics().density;
+
+            for (String item : loadDock(mPrefs)) {
+                final String id = item.startsWith("-") ? item.substring(1) : item;
+                final View row = getLayoutInflater().inflate(
+                        R.layout.settings_preference, list, false);
+                row.setTag(id);
+                ((TextView) row.findViewById(R.id.settings_item_title)).setText(dockLabel(id));
+                setSummary((TextView) row.findViewById(R.id.settings_item_summary), null);
+                final android.widget.CheckBox box =
+                        (android.widget.CheckBox) row.findViewById(R.id.settings_item_checkbox);
+                box.setVisibility(View.VISIBLE);
+                box.setChecked(!item.startsWith("-"));
+                row.setOnClickListener(v -> {
+                    box.setChecked(!box.isChecked());
+                    saveDock(list);
+                });
+
+                final android.widget.ImageView handle = new android.widget.ImageView(this);
+                handle.setImageResource(R.drawable.tweaks_dock_grabber);
+                handle.setScaleType(android.widget.ImageView.ScaleType.CENTER);
+                final int pad = (int) (12 * density);
+                handle.setPadding(pad, pad, (int) (4 * density), pad);
+                ((LinearLayout) row).addView(handle, new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.MATCH_PARENT));
+                final float[] startY = new float[1];
+                handle.setOnTouchListener((v, ev) -> {
+                    switch (ev.getActionMasked()) {
+                        case android.view.MotionEvent.ACTION_DOWN:
+                            v.getParent().requestDisallowInterceptTouchEvent(true);
+                            startY[0] = ev.getRawY();
+                            row.setTranslationZ(8 * density);
+                            row.setPressed(true);
+                            return true;
+                        case android.view.MotionEvent.ACTION_MOVE: {
+                            int index = list.indexOfChild(row);
+                            float dy = ev.getRawY() - startY[0];
+                            // past the middle of a neighbor: the neighbor moves to the other side
+                            while (index < list.getChildCount() - 1
+                                    && dy > list.getChildAt(index + 1).getHeight() / 2f) {
+                                final View next = list.getChildAt(index + 1);
+                                list.removeView(next);
+                                list.addView(next, index);
+                                index++;
+                                startY[0] += next.getHeight() + dividerHeight;
+                                dy = ev.getRawY() - startY[0];
+                            }
+                            while (index > 0
+                                    && -dy > list.getChildAt(index - 1).getHeight() / 2f) {
+                                final View previous = list.getChildAt(index - 1);
+                                list.removeView(previous);
+                                list.addView(previous, index);
+                                index--;
+                                startY[0] -= previous.getHeight() + dividerHeight;
+                                dy = ev.getRawY() - startY[0];
+                            }
+                            row.setTranslationY(dy);
+                            return true;
+                        }
+                        case android.view.MotionEvent.ACTION_UP:
+                        case android.view.MotionEvent.ACTION_CANCEL:
+                            row.setTranslationY(0);
+                            row.setTranslationZ(0);
+                            row.setPressed(false);
+                            saveDock(list);
+                            return true;
+                    }
+                    return false;
+                });
+                list.addView(row);
+            }
+        }
+
+        private void saveDock(LinearLayout list) {
+            final StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < list.getChildCount(); i++) {
+                final View row = list.getChildAt(i);
+                final boolean on = ((android.widget.CheckBox) row.findViewById(
+                        R.id.settings_item_checkbox)).isChecked();
+                if (sb.length() > 0) sb.append(',');
+                sb.append(on ? "" : "-").append(row.getTag());
+            }
+            mPrefs.edit().putString(TWEAK_DOCK, sb.toString()).apply();
+            sChanged = true;
         }
 
         private void addPage(final int title, int summary) {

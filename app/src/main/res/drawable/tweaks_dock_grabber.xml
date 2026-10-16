@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tweaks: drag handle of the dock order in the settings -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:top="0dip" android:bottom="12dip">
+        <shape><solid android:color="#ff8a8a8a" /><size android:width="24dip" android:height="2dip" /></shape>
+    </item>
+    <item android:top="6dip" android:bottom="6dip">
+        <shape><solid android:color="#ff8a8a8a" /><size android:width="24dip" android:height="2dip" /></shape>
+    </item>
+    <item android:top="12dip" android:bottom="0dip">
+        <shape><solid android:color="#ff8a8a8a" /><size android:width="24dip" android:height="2dip" /></shape>
+    </item>
+</layer-list>
