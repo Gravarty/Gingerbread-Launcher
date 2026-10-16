@@ -254,7 +254,15 @@ public final class Launcher extends Activity
             cluster.removeView(allApps);
         }
 
-        final LinearLayout row = new LinearLayout(this);
+        // While the drawer is open its home button lies over the dock: in stock the all apps
+        // button below it takes the taps. Here the buttons may sit anywhere, so the row lets
+        // the touches through to the drawer, which handles its home button itself.
+        final LinearLayout row = new LinearLayout(this) {
+            @Override
+            public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
+                return !isAllAppsVisible() && super.dispatchTouchEvent(ev);
+            }
+        };
         row.setOrientation(landscape ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
         final android.widget.RelativeLayout.LayoutParams rowLp;
         if (landscape) {

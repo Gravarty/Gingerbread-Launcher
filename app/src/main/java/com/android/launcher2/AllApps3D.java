@@ -694,8 +694,9 @@ public class AllApps3D extends GLSurfaceView
         int action = ev.getAction();
         switch (action) {
         case MotionEvent.ACTION_DOWN:
-            if ((isPortrait && y > mTouchYBorders[mTouchYBorders.length-1]) ||
-                    (!isPortrait && x > mTouchXBorders[mTouchXBorders.length-1])) {
+            if (!Launcher.sDockAllAppsHidden // Tweaks: no home button then
+                    && ((isPortrait && y > mTouchYBorders[mTouchYBorders.length-1]) ||
+                    (!isPortrait && x > mTouchXBorders[mTouchXBorders.length-1]))) {
                 mTouchTracking = TRACKING_HOME;
                 sRollo.setHomeSelected(SELECTED_PRESSED);
                 sRollo.mState.save();
