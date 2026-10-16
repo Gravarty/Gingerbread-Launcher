@@ -689,6 +689,10 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
                 boolean xMoved = xDiff > touchSlop;
                 boolean yMoved = yDiff > touchSlop;
 
+                // Tweaks: the swipe down already opened the notifications: the rest of this
+                // touch must not scroll the pages (or pull in the feed) as well
+                if (mSwipeDownHandled) break;
+
                 // Tweaks: swipe down opens the notifications (like Lawnchair)
                 if (Launcher.SWIPE_DOWN_NOTIFICATIONS && !mSwipeDownHandled
                         && mTouchState == TOUCH_STATE_REST
