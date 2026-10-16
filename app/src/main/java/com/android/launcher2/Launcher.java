@@ -166,6 +166,8 @@ public final class Launcher extends Activity
             DOCK_BROWSER = "browser";
     static final String[] DOCK_EXTRA_IDS = { "contacts", "messaging", "mail", "camera" };
     private static final String[] DOCK_STOCK = { DOCK_PHONE, DOCK_ALL_APPS, DOCK_BROWSER };
+    // Tweaks: the all apps button is hidden: the drawer doesn't draw its home button either
+    static volatile boolean sDockAllAppsHidden;
 
     /** Tweaks: the dock items in order, each "id" or "-id" when it's hidden. */
     static java.util.ArrayList<String> loadDock(android.content.SharedPreferences prefs) {
@@ -221,6 +223,7 @@ public final class Launcher extends Activity
         for (String item : loadDock(getSharedPreferences(TWEAKS_PREFERENCES, MODE_PRIVATE))) {
             if (!item.startsWith("-")) shown.add(item);
         }
+        sDockAllAppsHidden = !shown.contains(DOCK_ALL_APPS);
         if (shown.equals(java.util.Arrays.asList(DOCK_STOCK))) return;
 
         final android.widget.RelativeLayout cluster =

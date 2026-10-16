@@ -1801,6 +1801,8 @@ public class AllApps3D extends GLSurfaceView
             }
 
             void draw_home_button() {
+                // Tweaks: the all apps button (which takes the home button's taps) is hidden
+                if (Launcher.sDockAllAppsHidden) return;
                 final State state = mRenderer.state;
                 final Params params = mRenderer.params;
                 setColor(1.0f, 1.0f, 1.0f, 1.0f);
