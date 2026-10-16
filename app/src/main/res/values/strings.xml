@@ -83,13 +83,12 @@
     <string name="tweaks_icon_pack_colors_own">Own colors</string>
     <string name="tweaks_icon_pack_fg">Icon color</string>
     <string name="tweaks_icon_pack_bg">Background color</string>
-    <string name="tweaks_color_clock_green">Clock hand green</string>
     <string name="tweaks_color_dock_green">Dock green</string>
     <string name="tweaks_color_orange">Gingerbread orange</string>
     <string name="tweaks_color_dock_grey">Dock grey</string>
     <string name="tweaks_color_white">White</string>
     <string name="tweaks_color_black">Black</string>
-    <string name="tweaks_color_custom">Own HEX value…</string>
+    <string name="tweaks_color_custom">Custom color…</string>
     <string name="tweaks_color_invalid">Invalid color</string>
     <string name="tweaks_icon_pack">Icon pack</string>
     <string name="tweaks_icon_pack_none">None</string>
@@ -226,4 +225,6 @@
     <string name="tweaks_badges_access">"Notification access"</string>
     <string name="tweaks_badges_access_on">"Allowed"</string>
     <string name="tweaks_badges_access_off">"Not allowed – tap to allow"</string>
+    <string name="tweaks_color_wallpaper">"From the wallpaper"</string>
+    <string name="tweaks_color_own">"Custom color"</string>
 </resources>

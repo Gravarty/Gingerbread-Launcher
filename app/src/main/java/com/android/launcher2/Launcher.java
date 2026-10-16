@@ -317,7 +317,7 @@ public final class Launcher extends Activity
     static final String TWEAK_ICON_PACK_COLORS = "icon_pack_colors";
     static final String TWEAK_ICON_PACK_FG = "icon_pack_fg";
     static final String TWEAK_ICON_PACK_BG = "icon_pack_bg";
-    static final int DEFAULT_ICON_PACK_FG = 0xff99cc33;
+    static final int DEFAULT_ICON_PACK_FG = 0xff8fbc46; // dock green
     static final int DEFAULT_ICON_PACK_BG = 0xff2a2a2a;
     static boolean ICON_PACK_COLORS = false;
     static int ICON_PACK_FG = DEFAULT_ICON_PACK_FG;
@@ -342,11 +342,29 @@ public final class Launcher extends Activity
         ICON_PACK = prefs.getString(TWEAK_ICON_PACK, null);
         ICON_PACK_EVERYWHERE = prefs.getInt(TWEAK_ICON_PACK_EVERYWHERE, 0) == 1;
         ICON_PACK_COLORS = prefs.getInt(TWEAK_ICON_PACK_COLORS, 0) == 1;
-        ICON_PACK_FG = prefs.getInt(TWEAK_ICON_PACK_FG, DEFAULT_ICON_PACK_FG);
-        ICON_PACK_BG = prefs.getInt(TWEAK_ICON_PACK_BG, DEFAULT_ICON_PACK_BG);
+        ICON_PACK_FG = iconPackColor(context, prefs, TWEAK_ICON_PACK_FG, DEFAULT_ICON_PACK_FG);
+        ICON_PACK_BG = iconPackColor(context, prefs, TWEAK_ICON_PACK_BG, DEFAULT_ICON_PACK_BG);
         synchronized (sLock) {
             sScreen = Math.max(0, Math.min(sScreen, SCREEN_COUNT - 1));
         }
+    }
+
+    // Tweaks: "from the wallpaper" for a color (key + COLOR_FROM_WALLPAPER)
+    static final String COLOR_FROM_WALLPAPER = "_wallpaper";
+
+    /**
+     * Tweaks: icon pack color; from the wallpaper it's the system's palette (Monet), as
+     * Launcher3's themed icons in dark mode (ThemedIconDrawable.getColors(): background
+     * system_neutral1_800, icon system_accent1_100).
+     */
+    private static int iconPackColor(Context context, android.content.SharedPreferences prefs,
+            String key, int def) {
+        if (prefs.getBoolean(key + COLOR_FROM_WALLPAPER, false)) {
+            return context.getResources().getColor(TWEAK_ICON_PACK_BG.equals(key)
+                    ? android.R.color.system_neutral1_800
+                    : android.R.color.system_accent1_100, null);
+        }
+        return prefs.getInt(key, def);
     }
 
     /** Port: Gingerbread's system font (Droid Sans) instead of today's system font. */
@@ -475,7 +493,14 @@ public final class Launcher extends Activity
             android.os.Debug.startMethodTracing("/sdcard/launcher");
         }
 
+        final int oldFg = ICON_PACK_FG, oldBg = ICON_PACK_BG;
         loadTweaks(this); // Tweaks
+        if (ICON_PACK != null && ICON_PACK_COLORS
+                && (oldFg != ICON_PACK_FG || oldBg != ICON_PACK_BG)) {
+            // Tweaks: the wallpaper's colors changed (the system recreates the launcher)
+            ((LauncherApplication) getApplication()).getIconCache().flush();
+            ((LauncherApplication) getApplication()).getModel().forceReload();
+        }
         loadHotseats();
         checkForLocaleChange();
         setWallpaperDimension();
@@ -2666,12 +2691,20 @@ public final class Launcher extends Activity
         }
 
         // Color: suggestions from the Gingerbread graphics, or an own HEX value
-        private static final int[] COLOR_VALUES = { 0xff99cc33, 0xff8fbc46, 0xffffb819,
+        private static final int[] COLOR_VALUES = { 0xff8fbc46, 0xffffb819,
                 0xff2a2a2a, 0xffffffff, 0xff000000 };
-        private static final int[] COLOR_NAMES = { R.string.tweaks_color_clock_green,
-                R.string.tweaks_color_dock_green, R.string.tweaks_color_orange,
+        private static final int[] COLOR_NAMES = { R.string.tweaks_color_dock_green, R.string.tweaks_color_orange,
                 R.string.tweaks_color_dock_grey, R.string.tweaks_color_white,
                 R.string.tweaks_color_black };
+
+        /** Summary of a color: its name, "from the wallpaper" or "custom color". */
+        private String colorName(int color, boolean fromWallpaper) {
+            if (fromWallpaper) return getString(R.string.tweaks_color_wallpaper);
+            for (int i = 0; i < COLOR_VALUES.length; i++) {
+                if (COLOR_VALUES[i] == color) return getString(COLOR_NAMES[i]);
+            }
+            return getString(R.string.tweaks_color_own);
+        }
 
         private static String hex(int color) {
             return String.format("#%06X", color & 0xffffff);
@@ -2679,31 +2712,40 @@ public final class Launcher extends Activity
 
         private void addColor(final int title, final String key, int def) {
             final int[] color = { mPrefs.getInt(key, def) };
-            final View v = addItem(title, hex(color[0]));
+            final String wallpaperKey = key + COLOR_FROM_WALLPAPER;
+            final View v = addItem(title, colorName(color[0], mPrefs.getBoolean(wallpaperKey,
+                    false)));
             final TextView summary = (TextView) v.findViewById(R.id.settings_item_summary);
-            final CharSequence[] labels = new CharSequence[COLOR_VALUES.length + 1];
+            final CharSequence[] labels = new CharSequence[COLOR_VALUES.length + 2];
             for (int i = 0; i < COLOR_VALUES.length; i++) {
-                labels[i] = getString(COLOR_NAMES[i]) + " (" + hex(COLOR_VALUES[i]) + ")";
+                labels[i] = getString(COLOR_NAMES[i]);
             }
-            labels[COLOR_VALUES.length] = getString(R.string.tweaks_color_custom);
+            labels[COLOR_VALUES.length] = getString(R.string.tweaks_color_wallpaper);
+            labels[COLOR_VALUES.length + 1] = getString(R.string.tweaks_color_custom);
             final java.util.function.IntConsumer set = c -> {
                 color[0] = c;
-                mPrefs.edit().putInt(key, c).apply();
+                mPrefs.edit().putInt(key, c).putBoolean(wallpaperKey, false).apply();
                 sChanged = true;
                 sIconsChanged = true;
-                setSummary(summary, hex(c));
+                setSummary(summary, colorName(c, false));
             };
             v.setOnClickListener(view -> {
                 int checked = -1;
                 for (int i = 0; i < COLOR_VALUES.length; i++) {
                     if (COLOR_VALUES[i] == color[0]) checked = i;
                 }
+                if (mPrefs.getBoolean(wallpaperKey, false)) checked = COLOR_VALUES.length;
                 new AlertDialog.Builder(this)
                         .setTitle(title)
                         .setSingleChoiceItems(labels, checked, (dialog, which) -> {
                             dialog.dismiss();
                             if (which < COLOR_VALUES.length) {
                                 set.accept(COLOR_VALUES[which]);
+                            } else if (which == COLOR_VALUES.length) {
+                                mPrefs.edit().putBoolean(wallpaperKey, true).apply();
+                                sChanged = true;
+                                sIconsChanged = true;
+                                setSummary(summary, colorName(color[0], true));
                             } else {
                                 askHexColor(title, color[0], set);
                             }

@@ -50,13 +50,12 @@
     <string name="tweaks_icon_pack_colors_own">"Eigene Farben"</string>
     <string name="tweaks_icon_pack_fg">"Symbolfarbe"</string>
     <string name="tweaks_icon_pack_bg">"Hintergrundfarbe"</string>
-    <string name="tweaks_color_clock_green">"Uhrzeiger-Grün"</string>
     <string name="tweaks_color_dock_green">"Dock-Grün"</string>
     <string name="tweaks_color_orange">"Gingerbread-Orange"</string>
     <string name="tweaks_color_dock_grey">"Dock-Grau"</string>
     <string name="tweaks_color_white">"Weiß"</string>
     <string name="tweaks_color_black">"Schwarz"</string>
-    <string name="tweaks_color_custom">"Eigener HEX-Wert…"</string>
+    <string name="tweaks_color_custom">"Eigene Farbe…"</string>
     <string name="tweaks_color_invalid">"Ungültige Farbe"</string>
     <string name="tweaks_icon_pack">"Symbolpaket"</string>
     <string name="tweaks_icon_pack_none">"Keins"</string>
@@ -141,4 +140,6 @@
     <string name="tweaks_badges_access">"Zugriff auf Benachrichtigungen"</string>
     <string name="tweaks_badges_access_on">"Erlaubt"</string>
     <string name="tweaks_badges_access_off">"Nicht erlaubt – zum Erlauben tippen"</string>
+    <string name="tweaks_color_wallpaper">"Vom Hintergrund"</string>
+    <string name="tweaks_color_own">"Eigene Farbe"</string>
 </resources>
