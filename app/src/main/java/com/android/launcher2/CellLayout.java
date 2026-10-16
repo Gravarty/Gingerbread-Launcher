@@ -97,6 +97,10 @@ public class CellLayout extends ViewGroup {
 
         a.recycle();
 
+        // Tweaks: the TouchWiz badge sits 21dp right of the icon center; TouchWiz's shortcuts
+        // were wider, here it reaches into the 3dp side margin of the cell
+        if (Launcher.BADGES) setClipChildren(false);
+
         // Tweaks: configurable grid; X is always horizontal, Y vertical
         mPortrait = context.getResources().getConfiguration().orientation
                 != android.content.res.Configuration.ORIENTATION_LANDSCAPE;
