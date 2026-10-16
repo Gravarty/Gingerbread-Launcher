@@ -878,7 +878,11 @@ public final class Launcher extends Activity
                     ComponentName com = new ComponentName(
                         bestMatch.activityInfo.applicationInfo.packageName,
                         bestMatch.activityInfo.name);
-                    mHotseats[i] = new Intent(Intent.ACTION_MAIN).setComponent(com);
+                    mHotseats[i] = i == 5
+                            // Tweaks: the camera slot keeps its action (the activity that
+                            // takes STILL_IMAGE_CAMERA closes again on a plain MAIN intent)
+                            ? new Intent(intent).setComponent(com)
+                            : new Intent(Intent.ACTION_MAIN).setComponent(com);
 
                     // load the app label for accessibility
                     mHotseatLabels[i] = bestMatch.activityInfo.loadLabel(pm);
