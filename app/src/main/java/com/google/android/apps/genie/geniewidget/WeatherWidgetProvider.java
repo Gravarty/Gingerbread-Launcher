@@ -117,10 +117,27 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
 
     enum State { LOADING, READY, FAILED }
 
+    /**
+     * Port: the original layout up to the width of a Gingerbread 4x1 (Nexus S: 320dp), the
+     * wide layout beyond (responsive RemoteViews, Android 12+: the host view picks the one
+     * that fits its size, in any launcher).
+     */
     static RemoteViews build(Context context, int id, State state) {
+        final java.util.Map<android.util.SizeF, RemoteViews> sizes =
+                new java.util.HashMap<android.util.SizeF, RemoteViews>();
+        sizes.put(new android.util.SizeF(294, 72),
+                build(context, id, state, R.layout.genie_weather_widget));
+        sizes.put(new android.util.SizeF(WIDE_MIN_WIDTH, 72),
+                build(context, id, state, R.layout.genie_weather_widget_wide));
+        return new RemoteViews(sizes);
+    }
+
+    /** Port: wider than a Gingerbread 4x1 (4 x 80dp cells on the Nexus S) */
+    private static final float WIDE_MIN_WIDTH = 330;
+
+    private static RemoteViews build(Context context, int id, State state, int layout) {
         final SharedPreferences prefs = context.getSharedPreferences(PREFS, 0);
-        final RemoteViews v = new RemoteViews(context.getPackageName(),
-                R.layout.genie_weather_widget);
+        final RemoteViews v = new RemoteViews(context.getPackageName(), layout);
         final boolean hasData = prefs.contains(key(id, "temp"));
 
         // renderViewState()
