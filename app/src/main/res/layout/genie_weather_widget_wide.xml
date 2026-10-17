@@ -129,9 +129,13 @@
                         android:layout_height="match_parent"
                         android:layout_weight="1" />
 
+                    <!-- marginRight: the visible gap the weather icon has on the left (the
+                         75dp icons are transparent for about 11dp at their edges), so the
+                         text block sits as far from the right edge as the icon from the left -->
                     <RelativeLayout
                         android:layout_width="wrap_content"
-                        android:layout_height="match_parent">
+                        android:layout_height="match_parent"
+                        android:layout_marginRight="11dp">
 
                         <TextView
                             android:id="@+id/weather_city"
