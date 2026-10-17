@@ -41,12 +41,24 @@
                     android:layout_width="75dp"
                     android:layout_height="75dp" />
 
-                <RelativeLayout
+                <!-- Port: as in genie_weather_widget_wide: the icon on the left, the
+                     city/condition/high-low block on the right, the free width on both
+                     sides of the temperature. City and condition at most 110dp: in a
+                     LinearLayout with weights the block gets measured with the whole width
+                     and wouldn't be shortened, the limit leaves room for the temperature. -->
+                <LinearLayout
                     android:id="@+id/weather_extra"
-                    android:layout_width="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_marginTop="4dp"
                     android:layout_weight="1">
+
+                    <!-- FrameLayout: Space isn't allowed in RemoteViews -->
+                    <FrameLayout
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1" />
 
                     <TextView
                         android:id="@+id/weather_temp"
@@ -59,64 +71,62 @@
                         android:singleLine="true"
                         android:includeFontPadding="false" />
 
-                    <!-- Port: the text block at the right edge, as far from it as the icon
-                         from the left (the 75dp icons are transparent for about 11dp at
-                         their edges); right of the temperature it gets the space that's left
-                         and is shortened as before -->
-                    <LinearLayout
-                        android:orientation="horizontal"
-                        android:gravity="right"
+                    <!-- FrameLayout: Space isn't allowed in RemoteViews -->
+                    <FrameLayout
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1" />
+
+                    <!-- marginRight: the visible gap the weather icon has on the left (the
+                         75dp icons are transparent for about 11dp at their edges), so the
+                         text block sits as far from the right edge as the icon from the left -->
+                    <RelativeLayout
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_toRightOf="@id/weather_temp"
-                        android:layout_alignParentRight="true"
+                        android:layout_height="match_parent"
                         android:layout_marginRight="11dp">
 
-                        <RelativeLayout
+                        <TextView
+                            android:id="@+id/weather_city"
+                            android:maxWidth="110dp"
+                            android:textSize="12dp"
+                            android:textStyle="bold"
+                            android:textColor="@android:color/white"
+                            android:ellipsize="end"
                             android:layout_width="wrap_content"
-                            android:layout_height="wrap_content">
+                            android:layout_height="wrap_content"
+                            android:singleLine="true" />
 
-                            <TextView
-                                android:id="@+id/weather_city"
-                                android:textSize="12dp"
-                                android:textStyle="bold"
-                                android:textColor="@android:color/white"
-                                android:ellipsize="end"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:singleLine="true" />
+                        <TextView
+                            android:id="@+id/weather_condition"
+                            android:maxWidth="110dp"
+                            android:textSize="12dp"
+                            android:textColor="@android:color/white"
+                            android:ellipsize="end"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:singleLine="true"
+                            android:layout_below="@id/weather_city" />
 
-                            <TextView
-                                android:id="@+id/weather_condition"
-                                android:textSize="12dp"
-                                android:textColor="@android:color/white"
-                                android:ellipsize="end"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:singleLine="true"
-                                android:layout_below="@id/weather_city" />
+                        <TextView
+                            android:id="@+id/weather_high"
+                            android:textSize="20dp"
+                            android:textStyle="bold"
+                            android:textColor="@android:color/white"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_below="@id/weather_condition" />
 
-                            <TextView
-                                android:id="@+id/weather_high"
-                                android:textSize="20dp"
-                                android:textStyle="bold"
-                                android:textColor="@android:color/white"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_below="@id/weather_condition" />
-
-                            <TextView
-                                android:id="@+id/weather_low"
-                                android:textSize="20dp"
-                                android:textColor="#ffbfbfbf"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginLeft="6dp"
-                                android:layout_toRightOf="@id/weather_high"
-                                android:layout_below="@id/weather_condition" />
-                        </RelativeLayout>
-                    </LinearLayout>
-                </RelativeLayout>
+                        <TextView
+                            android:id="@+id/weather_low"
+                            android:textSize="20dp"
+                            android:textColor="#ffbfbfbf"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginLeft="6dp"
+                            android:layout_toRightOf="@id/weather_high"
+                            android:layout_below="@id/weather_condition" />
+                    </RelativeLayout>
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/weather_unavailable"
