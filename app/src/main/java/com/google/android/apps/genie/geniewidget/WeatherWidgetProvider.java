@@ -74,6 +74,16 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         super.onReceive(context, intent);
     }
 
+    /** Port: Android 11, the launcher reported a new size: the layout for it (see build()) */
+    @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager manager, int id,
+            android.os.Bundle newOptions) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) return;
+        final SharedPreferences prefs = context.getSharedPreferences(PREFS, 0);
+        if (!prefs.contains(key(id, "temp"))) return; // still the initial layout
+        manager.updateAppWidget(id, build(context, id, State.READY));
+    }
+
     @Override
     public void onDeleted(Context context, int[] ids) {
         final SharedPreferences prefs = context.getSharedPreferences(PREFS, 0);
@@ -123,6 +133,14 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
      * that fits its size, in any launcher).
      */
     static RemoteViews build(Context context, int id, State state) {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) {
+            // Android 11: no responsive RemoteViews; the layout for the width the launcher
+            // reported (OPTION_APPWIDGET_MIN_WIDTH: portrait), the normal one without it
+            final int width = AppWidgetManager.getInstance(context).getAppWidgetOptions(id)
+                    .getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0);
+            return build(context, id, state, width >= WIDE_MIN_WIDTH
+                    ? R.layout.genie_weather_widget_wide : R.layout.genie_weather_widget);
+        }
         final java.util.Map<android.util.SizeF, RemoteViews> sizes =
                 new java.util.HashMap<android.util.SizeF, RemoteViews>();
         sizes.put(new android.util.SizeF(294, 72),
