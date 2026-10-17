@@ -106,7 +106,8 @@
                     android:layout_marginTop="4dp"
                     android:layout_weight="1">
 
-                    <Space
+                    <!-- FrameLayout: Space isn't allowed in RemoteViews -->
+                    <FrameLayout
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1" />
@@ -122,7 +123,8 @@
                         android:singleLine="true"
                         android:includeFontPadding="false" />
 
-                    <Space
+                    <!-- FrameLayout: Space isn't allowed in RemoteViews -->
+                    <FrameLayout
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1" />
