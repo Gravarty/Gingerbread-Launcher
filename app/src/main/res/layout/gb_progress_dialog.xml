@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Gingerbread progress_dialog (android-2.3.7_r1) for GbDialog lists -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingLeft="8dip"
+    android:paddingTop="10dip"
+    android:paddingRight="8dip"
+    android:paddingBottom="10dip">
+    <ProgressBar
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minWidth="48dip"
+        android:maxWidth="48dip"
+        android:minHeight="48dip"
+        android:maxHeight="48dip"
+        android:indeterminate="true"
+        android:indeterminateDrawable="@drawable/gb_progress_medium_white"
+        android:indeterminateBehavior="repeat"
+        android:indeterminateDuration="3500"
+        android:layout_marginRight="12dip" />
+    <TextView android:id="@+id/gb_message"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:textSize="18sp"
+        android:textColor="@color/gb_primary_text_dark" />
+</LinearLayout>

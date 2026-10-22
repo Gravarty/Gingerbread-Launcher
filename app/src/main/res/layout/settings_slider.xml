@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tweaks: a number setting as a slider (title and value above), laid out like
+     settings_preference of Gingerbread 2.3.7. The SeekBar uses the attributes of
+     Widget.SeekBar of 2.3.7 (progress_horizontal, seek_thumb, thumbOffset 8dip, 20dip high);
+     the side padding of 8dip lets the thumb start flush with the title. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingLeft="15dip"
+    android:paddingRight="15dip"
+    android:paddingTop="10dip"
+    android:paddingBottom="10dip">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView android:id="@+id/settings_slider_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:singleLine="true"
+            android:textSize="22sp"
+            android:textColor="@color/gb_primary_text_dark" />
+
+        <TextView android:id="@+id/settings_slider_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:singleLine="true"
+            android:textSize="22sp"
+            android:textColor="@color/gb_secondary_text_dark" />
+    </RelativeLayout>
+
+    <SeekBar android:id="@+id/settings_slider_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dip"
+        android:paddingLeft="8dip"
+        android:paddingRight="8dip"
+        android:indeterminateOnly="false"
+        android:progressDrawable="@drawable/gb_progress_horizontal"
+        android:indeterminateDrawable="@drawable/gb_progress_horizontal"
+        android:minHeight="20dip"
+        android:maxHeight="20dip"
+        android:thumb="@drawable/gb_seek_thumb"
+        android:thumbOffset="8dip"
+        android:focusable="true" />
+</LinearLayout>

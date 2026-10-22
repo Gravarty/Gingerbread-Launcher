@@ -34,6 +34,11 @@ public class LauncherAppWidgetHost extends AppWidgetHost {
     @Override
     protected AppWidgetHostView onCreateView(Context context, int appWidgetId,
             AppWidgetProviderInfo appWidget) {
+        // Tweaks: widgets of this app work in this launcher only
+        if (appWidget != null && appWidget.provider != null
+                && context.getPackageName().equals(appWidget.provider.getPackageName())) {
+            LauncherOnly.claim(context, appWidgetId, appWidget.provider);
+        }
         return new LauncherAppWidgetHostView(context);
     }
 }

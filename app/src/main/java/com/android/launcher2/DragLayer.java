@@ -59,6 +59,11 @@ public class DragLayer extends FrameLayout {
      * black Gingerbread status bar) and only pads its content.
      */
     private final Rect mInsets = new Rect();
+    // Tweaks: the bars that are covered (not transparent) are drawn here, each on its own
+    private final Rect mStatusInsets = new Rect();
+    private final Rect mNavInsets = new Rect();
+    private final android.graphics.Paint mBarPaint = new android.graphics.Paint();
+    { mBarPaint.setColor(0xff000000); }
 
     /*
      * Tweaks: swipe up on the home screen (workspace or dock) opens all apps, the open
@@ -144,9 +149,16 @@ public class DragLayer extends FrameLayout {
                 | WindowInsets.Type.displayCutout());
         mInsets.set(i.left, i.top, i.right, i.bottom);
         setPadding(i.left, i.top, i.right, i.bottom);
+        final Insets st = insets.getInsets(WindowInsets.Type.statusBars());
+        final Insets nv = insets.getInsets(WindowInsets.Type.navigationBars());
+        mStatusInsets.set(st.left, st.top, st.right, st.bottom);
+        mNavInsets.set(nv.left, nv.top, nv.right, nv.bottom);
+        updateScrim();
 
         final View allApps = findViewById(R.id.all_apps_view);
         if (allApps instanceof AllApps3D) {
+            ((AllApps3D) allApps).setCoveredInsets(mStatusInsets, mNavInsets,
+                    !Launcher.TRANSPARENT_STATUS_BAR, !Launcher.TRANSPARENT_NAV_BAR);
             ((AllApps3D) allApps).setContentInsets(mInsets);
         } else if (allApps != null) {
             if (mAllAppsBasePadding == null) {
@@ -159,6 +171,109 @@ public class DragLayer extends FrameLayout {
                     mAllAppsBasePadding.bottom + i.bottom);
         }
         return WindowInsets.CONSUMED;
+    }
+
+    /*
+     * Tweaks: covered bars. The system draws no bar backgrounds any more (Android 15), and
+     * this view is moved and faded while the Google feed slides in, so the bars can't be drawn
+     * here. They live in their own non-touchable window on top of the launcher window (a sub
+     * window above the feed's panel), which stays where it is and also covers the feed.
+     */
+    private BarScrim mScrim;
+
+    private static final class BarScrim extends View {
+        private final Rect mStatus = new Rect(), mNav = new Rect();
+        private boolean mStatusCovered, mNavCovered;
+        private final android.graphics.Paint mPaint = new android.graphics.Paint();
+
+        BarScrim(android.content.Context context) {
+            super(context);
+            mPaint.setColor(0xff000000);
+        }
+
+        void set(Rect status, Rect nav, boolean statusCovered, boolean navCovered) {
+            mStatus.set(status);
+            mNav.set(nav);
+            mStatusCovered = statusCovered;
+            mNavCovered = navCovered;
+            invalidate();
+        }
+
+        private void bar(android.graphics.Canvas c, Rect r) {
+            final int w = getWidth(), h = getHeight();
+            if (r.top > 0) c.drawRect(0, 0, w, r.top, mPaint);
+            if (r.bottom > 0) c.drawRect(0, h - r.bottom, w, h, mPaint);
+            if (r.left > 0) c.drawRect(0, 0, r.left, h, mPaint);
+            if (r.right > 0) c.drawRect(w - r.right, 0, w, h, mPaint);
+        }
+
+        @Override
+        protected void onDraw(android.graphics.Canvas canvas) {
+            if (mStatusCovered) bar(canvas, mStatus);
+            if (mNavCovered) bar(canvas, mNav);
+        }
+    }
+
+    private void updateScrim() {
+        final boolean statusCovered = !Launcher.TRANSPARENT_STATUS_BAR;
+        final boolean navCovered = !Launcher.TRANSPARENT_NAV_BAR;
+        if (!statusCovered && !navCovered) {
+            removeScrim();
+            return;
+        }
+        if (getWindowToken() == null) return;
+        final android.view.WindowManager wm =
+                (android.view.WindowManager) getContext().getSystemService(
+                        android.content.Context.WINDOW_SERVICE);
+        if (mScrim == null) {
+            mScrim = new BarScrim(getContext());
+            final android.view.WindowManager.LayoutParams lp =
+                    new android.view.WindowManager.LayoutParams(
+                            android.view.WindowManager.LayoutParams.MATCH_PARENT,
+                            android.view.WindowManager.LayoutParams.MATCH_PARENT,
+                            android.view.WindowManager.LayoutParams.TYPE_APPLICATION_ATTACHED_DIALOG,
+                            android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                                    | android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                                    | android.view.WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                                    | android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                            android.graphics.PixelFormat.TRANSLUCENT);
+            lp.token = getWindowToken();
+            lp.gravity = android.view.Gravity.TOP | android.view.Gravity.LEFT;
+            lp.setFitInsetsTypes(0);
+            lp.layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams
+                    .LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+            lp.setTitle("BarScrim");
+            try {
+                wm.addView(mScrim, lp);
+            } catch (RuntimeException e) {
+                mScrim = null;
+                return;
+            }
+        }
+        mScrim.set(mStatusInsets, mNavInsets, statusCovered, navCovered);
+    }
+
+    private void removeScrim() {
+        if (mScrim == null) return;
+        try {
+            ((android.view.WindowManager) getContext().getSystemService(
+                    android.content.Context.WINDOW_SERVICE)).removeViewImmediate(mScrim);
+        } catch (RuntimeException e) {
+            // already gone with the window
+        }
+        mScrim = null;
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        post(this::updateScrim);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        removeScrim();
+        super.onDetachedFromWindow();
     }
 
     @Override

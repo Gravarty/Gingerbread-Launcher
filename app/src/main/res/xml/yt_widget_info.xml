@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Port: xml/widget_info of YouTube 1.6.19 (4x1); refreshed by FeedJob at the interval set in the launcher settings -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="294dp"
+    android:minHeight="72dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/yt_widget"
+    android:resizeMode="horizontal"
+    android:widgetFeatures="hide_from_picker" />

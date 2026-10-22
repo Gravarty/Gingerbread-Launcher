@@ -209,7 +209,7 @@ public class SearchWidgetProvider extends BroadcastReceiver {
             views.setViewVisibility(R.id.search_widget_text, View.VISIBLE);
             views.setViewVisibility(R.id.corpus_indicator, View.VISIBLE);
 
-            appWidgetMgr.updateAppWidget(mAppWidgetId, views);
+            com.android.launcher2.LauncherOnly.update(context, appWidgetMgr, mAppWidgetId, views);
         }
 
         private void setOnClickActivityIntent(Context context, RemoteViews views, int viewId,

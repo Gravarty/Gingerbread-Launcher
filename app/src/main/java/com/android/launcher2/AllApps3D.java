@@ -150,6 +150,10 @@ public class AllApps3D extends GLSurfaceView
 
     /** Port: system bar insets; the drawer is drawn inside them. */
     private final Rect mContentInsets = new Rect();
+    // Tweaks: covered bars, painted black over the drawer (it is a surface on top of the window)
+    private final Rect mStatusBar = new Rect();
+    private final Rect mNavBar = new Rect();
+    private volatile boolean mStatusCovered, mNavCovered;
     /** Port: current layout, see {@link Layout}. */
     private Layout mLayout;
 
@@ -305,6 +309,17 @@ public class AllApps3D extends GLSurfaceView
 
     public void surrender() {
         mSurrendered = true;
+    }
+
+    /** Tweaks: the bars (status / navigation) that are covered, as rects in view px. */
+    void setCoveredInsets(Rect status, Rect nav, boolean statusCovered, boolean navCovered) {
+        synchronized (mStatusBar) {
+            mStatusBar.set(status);
+            mNavBar.set(nav);
+            mStatusCovered = statusCovered;
+            mNavCovered = navCovered;
+        }
+        requestRender();
     }
 
     /** Port: system bar insets from DragLayer. */
@@ -1969,6 +1984,7 @@ public class AllApps3D extends GLSurfaceView
 
                 // Draw the icons ========================================
                 drawFrontGrid(g_PosPage, g_Animation);
+                mRenderer.endCells();
 
                 draw_home_button();
 
@@ -2062,6 +2078,44 @@ public class AllApps3D extends GLSurfaceView
             private boolean mContextReady;
             private Layout mUniformLayout;
 
+            /**
+             * Perf: uniform and attribute locations, looked up once per program. drawCell()
+             * used to call glGetUniformLocation()/glGetAttribLocation() 8 times for every
+             * icon, selection and label quad, i.e. hundreds of string lookups per frame.
+             */
+            private final class Locs {
+                final int program;
+                final int imgSize, position, bendPos, bendAngle, scaleOffset, mvp;
+                final int color, tex0, aPos, aTex;
+                /** Value of mConstVersion the per-layout uniforms were last uploaded for. */
+                int constVersion = -1;
+
+                Locs(int program) {
+                    this.program = program;
+                    imgSize = GLES20.glGetUniformLocation(program, "UNI_ImgSize");
+                    position = GLES20.glGetUniformLocation(program, "UNI_Position");
+                    bendPos = GLES20.glGetUniformLocation(program, "UNI_BendPos");
+                    bendAngle = GLES20.glGetUniformLocation(program, "UNI_BendAngle");
+                    scaleOffset = GLES20.glGetUniformLocation(program, "UNI_ScaleOffset");
+                    mvp = GLES20.glGetUniformLocation(program, "UNI_MVP");
+                    color = GLES20.glGetUniformLocation(program, "UNI_Color");
+                    tex0 = GLES20.glGetUniformLocation(program, "UNI_Tex0");
+                    aPos = GLES20.glGetAttribLocation(program, "ATTRIB_position");
+                    aTex = GLES20.glGetAttribLocation(program, "ATTRIB_texture0");
+                }
+            }
+
+            private Locs mCurveRgbaLocs;
+            private Locs mCurveAlphaLocs;
+            private Locs mSpriteLocs;
+            /** Bumped by setupLayout(): the curve programs' per-layout uniforms are stale. */
+            private int mConstVersion;
+            /** Program currently in use by drawCell(), 0 = unknown (reset every frame). */
+            private int mCurrentProgram;
+            /** Vertex attribute array drawCell() has enabled, -1 = none. */
+            private int mEnabledAttrib = -1;
+            private final float[] mQuadData = new float[16];
+
             Renderer() {
                 script.init();
                 script.pfClearColor(0.0f, 0.0f, 0.0f, 0.0f); // mScript.setClearColor()
@@ -2100,6 +2154,8 @@ public class AllApps3D extends GLSurfaceView
                 GLES20.glColorMask(true, true, true, true);
                 GLES20.glClearColor(script.clearR, script.clearG, script.clearB, script.clearA);
                 GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+                mCurrentProgram = 0;
+                mEnabledAttrib = -1;
 
                 if (l == null || !mContextReady) {
                     return;
@@ -2136,11 +2192,37 @@ public class AllApps3D extends GLSurfaceView
                 if (script.main() != 0) {
                     requestRender();
                 }
+
+                // Tweaks: covered bars stay black above the icons (rects from the top left)
+                final java.util.ArrayList<Rect> bars = new java.util.ArrayList<>(8);
+                synchronized (mStatusBar) {
+                    for (int k = 0; k < 2; k++) {
+                        if (k == 0 ? !mStatusCovered : !mNavCovered) continue;
+                        final Rect r = k == 0 ? mStatusBar : mNavBar;
+                        final int sw = mSurfaceWidth, sh = mSurfaceHeight;
+                        if (r.top > 0) bars.add(new Rect(0, 0, sw, r.top));
+                        if (r.bottom > 0) bars.add(new Rect(0, sh - r.bottom, sw, sh));
+                        if (r.left > 0) bars.add(new Rect(0, 0, r.left, sh));
+                        if (r.right > 0) bars.add(new Rect(sw - r.right, 0, sw, sh));
+                    }
+                }
+                if (!bars.isEmpty()) {
+                    GLES20.glViewport(0, 0, mSurfaceWidth, mSurfaceHeight);
+                    GLES20.glColorMask(true, true, true, true);
+                    GLES20.glEnable(GLES20.GL_SCISSOR_TEST);
+                    GLES20.glClearColor(0f, 0f, 0f, 1f);
+                    for (Rect r : bars) {
+                        GLES20.glScissor(r.left, mSurfaceHeight - r.bottom, r.width(), r.height());
+                        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+                    }
+                    GLES20.glDisable(GLES20.GL_SCISSOR_TEST);
+                }
             }
 
             /** surfaceChanged()'s vpConstants and resize()'s projection. */
             private void setupLayout(Layout l) {
                 mUniformLayout = l;
+                mConstVersion++;
                 final float w = l.w;
                 final float h = l.h;
                 // tf = {72, 72,  120, 120, 0, 0,  120, 680,  2/480, 0, -w/2-0.25, -380.25}
@@ -2226,33 +2308,54 @@ public class AllApps3D extends GLSurfaceView
 
             /** drawSimpleMesh(NAMED_SMCell) with PVCurve and PFTexMip(Alpha)/PFTexNearest. */
             void drawCell(int texture, boolean alpha) {
-                final int program = alpha ? mCurveAlphaProgram : mCurveRgbaProgram;
-                GLES20.glUseProgram(program);
-                GLES20.glUniform2fv(GLES20.glGetUniformLocation(program, "UNI_ImgSize"),
-                        1, vpImgSize, 0);
-                GLES20.glUniform4fv(GLES20.glGetUniformLocation(program, "UNI_Position"),
-                        1, vpPosition, 0);
-                GLES20.glUniform2fv(GLES20.glGetUniformLocation(program, "UNI_BendPos"),
-                        1, vpBendPos, 0);
-                GLES20.glUniform1f(GLES20.glGetUniformLocation(program, "UNI_BendAngle"),
-                        layout.bendAngle); // Port
-                GLES20.glUniform4fv(GLES20.glGetUniformLocation(program, "UNI_ScaleOffset"),
-                        1, vpScaleOffset, 0);
-                GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(program, "UNI_MVP"),
-                        1, false, mProjection, 0);
+                final Locs p = alpha ? mCurveAlphaLocs : mCurveRgbaLocs;
 
-                GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+                // Perf: only switch program / vertex setup when the program changes (icons
+                // alternate with labels, which use the alpha program).
+                if (mCurrentProgram != p.program) {
+                    mCurrentProgram = p.program;
+                    GLES20.glUseProgram(p.program);
+                    if (mEnabledAttrib != p.aPos) {
+                        if (mEnabledAttrib >= 0) {
+                            GLES20.glDisableVertexAttribArray(mEnabledAttrib);
+                        }
+                        GLES20.glEnableVertexAttribArray(p.aPos);
+                        mEnabledAttrib = p.aPos;
+                    }
+                    mMeshVertices.position(0);
+                    GLES20.glVertexAttribPointer(p.aPos, 2, GLES20.GL_FLOAT, false, 0,
+                            mMeshVertices);
+                    GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+                }
+
+                // Perf: these only change with the layout, uniforms keep their value in the
+                // program object.
+                if (p.constVersion != mConstVersion) {
+                    p.constVersion = mConstVersion;
+                    GLES20.glUniform2fv(p.bendPos, 1, vpBendPos, 0);
+                    GLES20.glUniform1f(p.bendAngle, layout.bendAngle); // Port
+                    GLES20.glUniform4fv(p.scaleOffset, 1, vpScaleOffset, 0);
+                    GLES20.glUniformMatrix4fv(p.mvp, 1, false, mProjection, 0);
+                    GLES20.glUniform1i(p.tex0, 0);
+                }
+
+                GLES20.glUniform2fv(p.imgSize, 1, vpImgSize, 0);
+                GLES20.glUniform4fv(p.position, 1, vpPosition, 0);
+
                 GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texture);
-                GLES20.glUniform1i(GLES20.glGetUniformLocation(program, "UNI_Tex0"), 0);
 
-                final int pos = GLES20.glGetAttribLocation(program, "ATTRIB_position");
-                GLES20.glEnableVertexAttribArray(pos);
-                mMeshVertices.position(0);
-                GLES20.glVertexAttribPointer(pos, 2, GLES20.GL_FLOAT, false, 0, mMeshVertices);
                 mMeshIndices.position(0);
                 GLES20.glDrawElements(GLES20.GL_TRIANGLES, mMeshIndexCount,
                         GLES20.GL_UNSIGNED_SHORT, mMeshIndices);
-                GLES20.glDisableVertexAttribArray(pos);
+            }
+
+            /** Perf: undoes drawCell()'s cached vertex setup once the grid is drawn. */
+            void endCells() {
+                if (mEnabledAttrib >= 0) {
+                    GLES20.glDisableVertexAttribArray(mEnabledAttrib);
+                    mEnabledAttrib = -1;
+                }
+                mCurrentProgram = 0;
             }
 
             /**
@@ -2263,13 +2366,12 @@ public class AllApps3D extends GLSurfaceView
                 if (homeTextures == null) {
                     return;
                 }
-                final float[] q = new float[] {
-                    // x, y, s, t
-                    x,     y,     0, 1,
-                    x + w, y,     1, 1,
-                    x + w, y + h, 1, 0,
-                    x,     y + h, 0, 0,
-                };
+                final float[] q = mQuadData; // Perf: was a new float[16] per call
+                // x, y, s, t
+                q[0] = x;     q[1] = y;     q[2] = 0;  q[3] = 1;
+                q[4] = x + w; q[5] = y;     q[6] = 1;  q[7] = 1;
+                q[8] = x + w; q[9] = y + h; q[10] = 1; q[11] = 0;
+                q[12] = x;    q[13] = y + h; q[14] = 0; q[15] = 0;
                 mQuad.clear();
                 mQuad.put(q).position(0);
 
@@ -2281,18 +2383,17 @@ public class AllApps3D extends GLSurfaceView
                             l.content.width(), l.content.height());
                 }
 
-                final int program = mSpriteRgbaProgram;
-                GLES20.glUseProgram(program);
-                GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(program, "UNI_MVP"),
-                        1, false, mOrtho, 0);
-                GLES20.glUniform4fv(GLES20.glGetUniformLocation(program, "UNI_Color"),
-                        1, mColor, 0);
+                final Locs sp = mSpriteLocs;
+                GLES20.glUseProgram(sp.program);
+                mCurrentProgram = sp.program;
+                GLES20.glUniformMatrix4fv(sp.mvp, 1, false, mOrtho, 0);
+                GLES20.glUniform4fv(sp.color, 1, mColor, 0);
                 GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
                 GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, homeTextures[which]);
-                GLES20.glUniform1i(GLES20.glGetUniformLocation(program, "UNI_Tex0"), 0);
+                GLES20.glUniform1i(sp.tex0, 0);
 
-                final int pos = GLES20.glGetAttribLocation(program, "ATTRIB_position");
-                final int tex = GLES20.glGetAttribLocation(program, "ATTRIB_texture0");
+                final int pos = sp.aPos;
+                final int tex = sp.aTex;
                 GLES20.glEnableVertexAttribArray(pos);
                 GLES20.glEnableVertexAttribArray(tex);
                 mQuad.position(0);
@@ -2557,6 +2658,12 @@ public class AllApps3D extends GLSurfaceView
                 mCurveRgbaProgram = link(vCurve, fRgba);
                 mCurveAlphaProgram = link(vCurve, fAlpha);
                 mSpriteRgbaProgram = link(vSprite, fRgba);
+
+                mCurveRgbaLocs = new Locs(mCurveRgbaProgram);
+                mCurveAlphaLocs = new Locs(mCurveAlphaProgram);
+                mSpriteLocs = new Locs(mSpriteRgbaProgram);
+                mCurrentProgram = 0;
+                mEnabledAttrib = -1;
             }
 
             private int compile(int type, String source) {

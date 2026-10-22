@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 2dp frame drawn over the 16:9 thumbnail (same colors as the yt_border_youtube_thumbnail 9-patches) -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true"><shape android:shape="rectangle"><stroke android:width="2.0dip" android:color="#FFEFE77B" /></shape></item>
+    <item android:state_selected="true"><shape android:shape="rectangle"><stroke android:width="2.0dip" android:color="#FFFF9600" /></shape></item>
+    <item android:state_focused="true"><shape android:shape="rectangle"><stroke android:width="2.0dip" android:color="#FFFF9600" /></shape></item>
+    <item android:state_enabled="false"><shape android:shape="rectangle"><stroke android:width="2.0dip" android:color="#808B898B" /></shape></item>
+    <item><shape android:shape="rectangle"><stroke android:width="2.0dip" android:color="#FFFFFFFF" /></shape></item>
+</selector>

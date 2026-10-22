@@ -79,8 +79,8 @@
     <string name="tweaks_dock_mail">Email</string>
     <string name="tweaks_dock_camera">Camera</string>
     <string name="tweaks_reset">Default</string>
-    <string name="tweaks_icon_pack_colors">Colors</string>
-    <string name="tweaks_icon_pack_colors_own">Own colors</string>
+    <string name="tweaks_icon_pack_colors">Color scheme</string>
+    <string name="tweaks_icon_pack_colors_own">Custom colors</string>
     <string name="tweaks_icon_pack_fg">Icon color</string>
     <string name="tweaks_icon_pack_bg">Background color</string>
     <string name="tweaks_color_dock_green">Dock green</string>
@@ -89,18 +89,17 @@
     <string name="tweaks_color_white">White</string>
     <string name="tweaks_color_black">Black</string>
     <string name="tweaks_color_custom">Custom color…</string>
-    <string name="tweaks_color_invalid">Invalid color</string>
+    <string name="tweaks_color_invalid">Invalid color value</string>
     <string name="tweaks_icon_pack">Icon pack</string>
     <string name="tweaks_icon_pack_none">None</string>
-    <string name="tweaks_icon_pack_where">Use for</string>
+    <string name="tweaks_icon_pack_where">Apply to</string>
     <string name="tweaks_icon_pack_home">Home screen only</string>
-    <string name="tweaks_icon_pack_everywhere">Everywhere</string>
+    <string name="tweaks_icon_pack_everywhere">Home screen and app drawer</string>
     <string name="tweaks_system_font">System font</string>
-    <string name="tweaks_system_font_summary">Use the system font instead of Gingerbread\'s Droid Sans</string>
+    <string name="tweaks_system_font_summary">Use the device font instead of Droid Sans</string>
     <string name="tweaks_swipe_up_all_apps">Swipe up</string>
-    <string name="tweaks_swipe_up_all_apps_summary">Open the app drawer with a swipe up; swipe down at the top of the list to close it</string>
+    <string name="tweaks_swipe_up_all_apps_summary">Swipe up on the home screen to open the app drawer; swipe down from the top of the list to close it</string>
     <string name="tweaks_category_icons">Icons</string>
-    <string name="tweaks_icons_summary">Icon shape, icon pack</string>
     <string name="tweaks_icon_shape">Icon shape</string>
     <string name="tweaks_icon_shape_system">System</string>
     <string name="tweaks_icon_shape_circle">Circle</string>
@@ -108,29 +107,38 @@
     <string name="tweaks_icon_shape_rounded_rect">Rounded rectangle</string>
     <string name="tweaks_icon_shape_teardrop">Teardrop</string>
     <string name="tweaks_icon_shape_square">Square</string>
-    <string name="tweaks_category_display">Display</string>
-    <string name="tweaks_no_bar_backgrounds">Without black bars</string>
-    <string name="tweaks_no_bar_backgrounds_summary">Show the wallpaper behind the status and navigation bar</string>
+    <string name="tweaks_category_badges">Badges</string>
+    <string name="tweaks_icons_summary">Shape, icon pack</string>
+    <string name="tweaks_display_summary">System bars, font, badges</string>
+    <string name="tweaks_category_system_bars">System bars</string>
+    <string name="tweaks_category_font">Font</string>
+    <string name="tweaks_category_display">Appearance</string>
+    <string name="tweaks_transparent_status_bar">Transparent status bar</string>
+    <string name="tweaks_transparent_nav_bar">Transparent navigation bar</string>
+    <string name="tweaks_transparent_bar_summary">Display the wallpaper behind the bar</string>
     <string name="tweaks_category_grid">Grid</string>
     <string name="tweaks_category_screens">Pages</string>
     <string name="tweaks_category_gestures">Gestures</string>
     <string name="tweaks_category_apps">Apps</string>
     <string name="tweaks_category_dock_apps">Dock apps</string>
-    <string name="tweaks_home_summary">Grid, pages, gestures</string>
+    <string name="tweaks_category_widgets">Widgets</string>
+    <string name="tweaks_widgets_summary">Weather, News, YouTube</string>
+    <string name="launcher_only_notice">This widget is only available in this launcher</string>
+    <string name="tweaks_home_summary">Grid, pages, gestures, feed</string>
     <string name="tweaks_drawer_summary">Grid, hidden apps</string>
-    <string name="tweaks_dock_summary">Apps and order in the dock</string>
+    <string name="tweaks_dock_summary">Dock apps and arrangement</string>
     <string name="tweaks_category_home">Home screen</string>
     <string name="tweaks_category_drawer">App drawer</string>
     <string name="tweaks_columns">Columns</string>
     <string name="tweaks_rows">Rows</string>
-    <string name="tweaks_screens">Screens</string>
+    <string name="tweaks_screens">Number of pages</string>
     <string name="tweaks_swipe_down_notifications">Swipe down</string>
-    <string name="tweaks_swipe_down_notifications_summary">Open the notifications with a swipe down on the home screen</string>
+    <string name="tweaks_swipe_down_notifications_summary">Swipe down on the home screen to open the notification panel</string>
     <string name="tweaks_hidden_apps">Hidden apps</string>
     <string name="tweaks_auto">Auto</string>
-    <string name="tweaks_reset_title">Restore defaults</string>
-    <string name="tweaks_reset_summary">Reset all launcher settings</string>
-    <string name="tweaks_reset_confirm">Reset all launcher settings to their defaults?</string>
+    <string name="tweaks_reset_title">Reset to defaults</string>
+    <string name="tweaks_reset_summary">Restore all settings to their default values</string>
+    <string name="tweaks_reset_confirm">All launcher settings will be restored to their default values. Continue?</string>
     <plurals name="tweaks_hidden_count">
         <item quantity="one">%d app hidden</item>
         <item quantity="other">%d apps hidden</item>
@@ -156,6 +164,8 @@
     <string name="title_select_application">Select application</string>
     <!-- Title of dialog when user is selecting live folder to add to homescreen -->
     <string name="title_select_live_folder">Select folder</string>
+    <!-- Tweaks: title of the widget picker (own list instead of the system picker) -->
+    <string name="title_select_widget">Select widget</string>
 
     <!-- All applications label for accessibilty (spoken when the button gets focus). -->
     <string name="all_apps_button_label">All applications</string>
@@ -215,18 +225,18 @@
     <string name="default_browser_url" translatable="false">
         http://www.google.com/m?client=ms-{CID}&amp;source=android-home-hotseat</string>
 
-    <string name="tweaks_category_feed">"Google feed"</string>
-    <string name="tweaks_feed">"Feed"</string>
+    <string name="tweaks_category_feed">Google feed</string>
+    <string name="tweaks_feed">Feed source</string>
     <string name="tweaks_feed_off">"Off"</string>
     <string name="tweaks_feed_google">"Google app"</string>
     <string name="tweaks_feed_aidl_bridge">"AIDL Bridge"</string>
-    <string name="tweaks_badges">"Notification badges"</string>
-    <string name="tweaks_badges_summary">"Show the number of notifications on the home screen icons (TouchWiz)"</string>
-    <string name="tweaks_badges_access">"Notification access"</string>
-    <string name="tweaks_badges_access_on">"Allowed"</string>
-    <string name="tweaks_badges_access_off">"Not allowed – tap to allow"</string>
-    <string name="tweaks_color_wallpaper">"From the wallpaper"</string>
-    <string name="tweaks_color_own">"Custom color"</string>
+    <string name="tweaks_badges">Notification badges</string>
+    <string name="tweaks_badges_summary">Show notification counts on app icons (TouchWiz)</string>
+    <string name="tweaks_badges_access">Notification access</string>
+    <string name="tweaks_badges_access_on">Granted</string>
+    <string name="tweaks_badges_access_off">Not granted – tap to grant access</string>
+    <string name="tweaks_color_wallpaper">From wallpaper</string>
+    <string name="tweaks_color_own">Custom color</string>
     <string name="tweaks_dock_phone">"Phone"</string>
     <string name="tweaks_dock_all_apps">"All apps"</string>
     <string name="tweaks_dock_browser">"Browser"</string>

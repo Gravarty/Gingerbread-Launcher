@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Port: layout/miniwidget_story_empty of Google's "News and Weather" 1.3.01 (a message
+     instead of the stories: no feeds yet, loading, unavailable) -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/news"
+    android:orientation="vertical"
+    android:gravity="center_vertical"
+    android:paddingLeft="4dp"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <TextView
+        android:id="@+id/news_message"
+        android:textSize="12dp"
+        android:textColor="@color/genie_news_primary"
+        android:ellipsize="end"
+        android:maxLines="4"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+</LinearLayout>

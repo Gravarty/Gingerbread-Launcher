@@ -17,7 +17,6 @@
 package com.android.launcher2;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.SearchManager;
 import android.app.WallpaperManager;
@@ -122,6 +121,11 @@ public final class Launcher extends Activity
     private static final int REQUEST_BIND_SEARCH_WIDGET = 11;
     static final String PENDING_SEARCH_WIDGET = "launcher.pending_search_widget";
     private int mPendingSearchWidgetId = -1;
+    // Tweaks: own widget picker, the system may ask for the permission to bind the widget
+    private static final int REQUEST_BIND_APPWIDGET = 12;
+    private int mPendingWidgetId = -1;
+    // Tweaks: Gingerbread-style pickers (widgets, shortcuts, applications, folders, wallpapers)
+    private GbDialog mPickerDialog;
 
     static final String EXTRA_SHORTCUT_DUPLICATE = "duplicate";
 
@@ -388,7 +392,14 @@ public final class Launcher extends Activity
     static int FEED = FeedOverlay.PROVIDER_OFF;
     static boolean SWIPE_UP_ALL_APPS = false;
     // Tweaks: no black system bars, the wallpaper shows behind them
-    static final String TWEAK_NO_BAR_BACKGROUNDS = "no_bar_backgrounds";
+    // (since Android 15 the system draws no bar backgrounds any more: the covered bar is
+    // drawn by DragLayer itself, each bar on its own)
+    static final String TWEAK_NO_BAR_BACKGROUNDS = "no_bar_backgrounds"; // old, both bars
+    static final String TWEAK_TRANSPARENT_STATUS_BAR = "transparent_status_bar";
+    static final String TWEAK_TRANSPARENT_NAV_BAR = "transparent_nav_bar";
+    static boolean TRANSPARENT_STATUS_BAR = false;
+    static boolean TRANSPARENT_NAV_BAR = false;
+    /** At least one bar is transparent (the drawer then draws over the whole surface). */
     static boolean NO_BAR_BACKGROUNDS = false;
     // Tweaks: shape of adaptive icons, index into Utilities.ICON_SHAPE_MASKS (0 = system)
     static final String TWEAK_ICON_SHAPE = "icon_shape";
@@ -421,7 +432,15 @@ public final class Launcher extends Activity
         SWIPE_UP_ALL_APPS = prefs.getBoolean(TWEAK_SWIPE_UP_ALL_APPS, false);
         FEED = prefs.getInt(TWEAK_FEED, FeedOverlay.PROVIDER_OFF);
         BADGES = prefs.getBoolean(TWEAK_BADGES, false);
-        NO_BAR_BACKGROUNDS = prefs.getBoolean(TWEAK_NO_BAR_BACKGROUNDS, false);
+        if (prefs.contains(TWEAK_NO_BAR_BACKGROUNDS)) { // one setting for both bars before
+            final boolean both = prefs.getBoolean(TWEAK_NO_BAR_BACKGROUNDS, false);
+            prefs.edit().remove(TWEAK_NO_BAR_BACKGROUNDS)
+                    .putBoolean(TWEAK_TRANSPARENT_STATUS_BAR, both)
+                    .putBoolean(TWEAK_TRANSPARENT_NAV_BAR, both).apply();
+        }
+        TRANSPARENT_STATUS_BAR = prefs.getBoolean(TWEAK_TRANSPARENT_STATUS_BAR, false);
+        TRANSPARENT_NAV_BAR = prefs.getBoolean(TWEAK_TRANSPARENT_NAV_BAR, false);
+        NO_BAR_BACKGROUNDS = TRANSPARENT_STATUS_BAR || TRANSPARENT_NAV_BAR;
         ICON_SHAPE = Math.max(0, Math.min(Utilities.ICON_SHAPE_MASKS.length - 1,
                 prefs.getInt(TWEAK_ICON_SHAPE, 0)));
         ICON_PACK = prefs.getString(TWEAK_ICON_PACK, null);
@@ -590,13 +609,15 @@ public final class Launcher extends Activity
         checkForLocaleChange();
         setWallpaperDimension();
 
-        if (NO_BAR_BACKGROUNDS) { // Tweaks: transparent system bars
+        {
+            // Tweaks: edge-to-edge on every Android version (forced only since 15) with
+            // transparent system bars. A bar that should be covered is drawn by DragLayer
+            // (the window's bar colors are ignored since Android 15), so all versions match.
             final android.view.Window window = getWindow();
             window.addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.setDecorFitsSystemWindows(false);
             window.setStatusBarColor(android.graphics.Color.TRANSPARENT);
             window.setNavigationBarColor(android.graphics.Color.TRANSPARENT);
-            window.setStatusBarContrastEnforced(false);
-            window.setNavigationBarContrastEnforced(false);
         }
         setContentView(R.layout.launcher);
         setupViews();
@@ -925,6 +946,19 @@ public final class Launcher extends Activity
             return;
         }
 
+        if (requestCode == REQUEST_BIND_APPWIDGET) { // Tweaks: own widget picker
+            final int appWidgetId = mPendingWidgetId;
+            mPendingWidgetId = -1;
+            if (appWidgetId == -1) return;
+            if (resultCode == RESULT_OK && mAddItemCellInfo != null) {
+                addAppWidget(new Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,
+                        appWidgetId));
+            } else {
+                mAppWidgetHost.deleteAppWidgetId(appWidgetId);
+            }
+            return;
+        }
+
         // The pattern used here is that a user PICKs a specific application,
         // which, depending on the target, might need to CREATE the actual target.
 
@@ -974,6 +1008,7 @@ public final class Launcher extends Activity
         super.onResume();
         mPaused = false;
         if (mFeed != null) mFeed.onResume(); // Tweaks
+        com.google.android.apps.genie.geniewidget.NewsWidgetProvider.refreshIfDue(this); // Tweaks
         if (Settings.sChanged) { // Tweaks: settings were changed
             Settings.sChanged = false;
             if (Settings.sIconsChanged) { // icon shape: create all icons again
@@ -1366,6 +1401,15 @@ public final class Launcher extends Activity
             mWorkspace.addInCurrentScreen(launcherInfo.hostView, xy[0], xy[1],
                     launcherInfo.spanX, launcherInfo.spanY, isWorkspaceLocked());
         }
+
+        // Tweaks: the weather, news and YouTube widgets are set up in the launcher settings
+        final String provider = appWidgetInfo.provider.getClassName();
+        if (getPackageName().equals(appWidgetInfo.provider.getPackageName())
+                && ("com.google.android.apps.genie.geniewidget.WeatherWidgetProvider".equals(provider)
+                || "com.google.android.apps.genie.geniewidget.NewsWidgetProvider".equals(provider)
+                || "com.google.android.youtube.widget.WidgetProvider".equals(provider))) {
+            startActivity(Settings.widgetsIntent(this));
+        }
     }
 
     public void removeAppWidget(LauncherAppWidgetInfo launcherInfo) {
@@ -1379,6 +1423,7 @@ public final class Launcher extends Activity
 
     void closeSystemDialogs() {
         getWindow().closeAllPanels();
+        dismissPicker();
 
         try {
             dismissDialog(DIALOG_CREATE_SHORTCUT);
@@ -1480,6 +1525,7 @@ public final class Launcher extends Activity
     @Override
     public void onDestroy() {
         super.onDestroy();
+        dismissPicker(); // Tweaks
         if (mFeed != null) mFeed.onDestroy(); // Tweaks
 
         try {
@@ -1644,6 +1690,12 @@ public final class Launcher extends Activity
         // TODO: catch bad widget exception when sent
         int appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
         AppWidgetProviderInfo appWidget = mAppWidgetManager.getAppWidgetInfo(appWidgetId);
+
+        if (appWidget == null) { // Tweaks: the widget couldn't be bound
+            if (appWidgetId != -1) mAppWidgetHost.deleteAppWidgetId(appWidgetId);
+            Toast.makeText(this, R.string.activity_not_found, Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         if (appWidget.configure != null) {
             // Launch over to configure widget, if needed
@@ -1812,21 +1864,7 @@ public final class Launcher extends Activity
 
     private void startWallpaper() {
         closeAllApps(true);
-        final Intent pickWallpaper = new Intent(Intent.ACTION_SET_WALLPAPER);
-        Intent chooser = Intent.createChooser(pickWallpaper,
-                getText(R.string.chooser_wallpaper));
-        // NOTE: Adds a configure option to the chooser if the wallpaper supports it
-        //       Removed in Eclair MR1
-//        WallpaperManager wm = (WallpaperManager)
-//                getSystemService(Context.WALLPAPER_SERVICE);
-//        WallpaperInfo wi = wm.getWallpaperInfo();
-//        if (wi != null && wi.getSettingsActivity() != null) {
-//            LabeledIntent li = new LabeledIntent(getPackageName(),
-//                    R.string.configure_wallpaper, 0);
-//            li.setClassName(wi.getPackageName(), wi.getSettingsActivity());
-//            chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[] { li });
-//        }
-        startActivityForResult(chooser, REQUEST_PICK_WALLPAPER);
+        showWallpaperPicker();
     }
 
     /**
@@ -2262,33 +2300,168 @@ public final class Launcher extends Activity
     }
 
     private void pickShortcut() {
-        Bundle bundle = new Bundle();
+        showShortcutPicker();
+    }
 
-        ArrayList<String> shortcutNames = new ArrayList<String>();
-        shortcutNames.add(getString(R.string.group_applications));
-        bundle.putStringArrayList(Intent.EXTRA_SHORTCUT_NAME, shortcutNames);
+    // ---------------------------------------------------------------------------------
+    // Tweaks: Gingerbread-style pickers. The system pickers (ACTION_APPWIDGET_PICK,
+    // ACTION_PICK_ACTIVITY, the wallpaper chooser) are drawn with today's design and can't
+    // be themed, so the launcher lists the choices itself, in the "Add to Home" dialog style.
+    // ---------------------------------------------------------------------------------
 
-        ArrayList<ShortcutIconResource> shortcutIcons = new ArrayList<ShortcutIconResource>();
-        shortcutIcons.add(ShortcutIconResource.fromContext(Launcher.this,
-                        R.drawable.ic_launcher_application));
-        bundle.putParcelableArrayList(Intent.EXTRA_SHORTCUT_ICON_RESOURCE, shortcutIcons);
+    private void dismissPicker() {
+        final GbDialog dialog = mPickerDialog;
+        mPickerDialog = null;
+        if (dialog != null && dialog.isShowing()) {
+            dialog.dismiss();
+        }
+    }
 
-        Intent pickIntent = new Intent(Intent.ACTION_PICK_ACTIVITY);
-        pickIntent.putExtra(Intent.EXTRA_INTENT, new Intent(Intent.ACTION_CREATE_SHORTCUT));
-        pickIntent.putExtra(Intent.EXTRA_TITLE, getText(R.string.title_select_shortcut));
-        pickIntent.putExtras(bundle);
+    private void showPicker(CharSequence title, ArrayList<PickerDialog.Entry> entries,
+            final PickerDialog.Listener listener) {
+        dismissPicker();
+        final GbDialog dialog = PickerDialog.create(this, title, entries, entry -> {
+            mWaitingForResult = false;
+            listener.onPicked(entry);
+        });
+        dialog.setOnCancelListener(d -> mWaitingForResult = false);
+        dialog.setOnDismissListener(d -> {
+            if (mPickerDialog == d) mPickerDialog = null;
+        });
+        mWaitingForResult = true;
+        mPickerDialog = dialog;
+        dialog.show();
+    }
 
-        startActivityForResultSafely(pickIntent, REQUEST_PICK_SHORTCUT);
+    /** The activities that can handle the intent, sorted by label. Tag: the ComponentName. */
+    private ArrayList<PickerDialog.Entry> queryPickerEntries(Intent intent) {
+        final PackageManager pm = getPackageManager();
+        final ArrayList<PickerDialog.Entry> entries = new ArrayList<PickerDialog.Entry>();
+        for (final ResolveInfo ri : pm.queryIntentActivities(intent, 0)) {
+            CharSequence label = ri.loadLabel(pm);
+            if (TextUtils.isEmpty(label)) label = ri.activityInfo.packageName;
+            entries.add(new PickerDialog.Entry(label, () -> ri.loadIcon(pm),
+                    new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name)));
+        }
+        PickerDialog.sortByLabel(entries);
+        return entries;
+    }
+
+    private void showWidgetPicker() {
+        final PackageManager pm = getPackageManager();
+        final int density = getResources().getDisplayMetrics().densityDpi;
+        final android.os.UserHandle me = android.os.Process.myUserHandle();
+        final ArrayList<PickerDialog.Entry> entries = new ArrayList<PickerDialog.Entry>();
+        for (final AppWidgetProviderInfo info : mAppWidgetManager.getInstalledProviders()) {
+            if ((info.widgetCategory & AppWidgetProviderInfo.WIDGET_CATEGORY_HOME_SCREEN) == 0) {
+                continue; // lock screen widgets
+            }
+            if (!me.equals(info.getProfile())) continue; // work profile
+            CharSequence label = info.loadLabel(pm);
+            if (TextUtils.isEmpty(label)) label = info.provider.getPackageName();
+            entries.add(new PickerDialog.Entry(label, () -> info.loadIcon(this, density), info));
+        }
+        if (entries.isEmpty()) {
+            Toast.makeText(this, R.string.activity_not_found, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        PickerDialog.sortByLabel(entries);
+        showPicker(getText(R.string.title_select_widget), entries,
+                entry -> bindAppWidget((AppWidgetProviderInfo) entry.tag));
+    }
+
+    private void bindAppWidget(AppWidgetProviderInfo info) {
+        final int appWidgetId = mAppWidgetHost.allocateAppWidgetId();
+        if (mAppWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)) {
+            addAppWidget(new Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId));
+            return;
+        }
+        // A launcher that isn't the system's needs the user's permission to bind the widget
+        final Intent intent = new Intent(AppWidgetManager.ACTION_APPWIDGET_BIND);
+        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
+        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider);
+        mPendingWidgetId = appWidgetId;
+        try {
+            startActivityForResult(intent, REQUEST_BIND_APPWIDGET);
+        } catch (ActivityNotFoundException | SecurityException e) {
+            mWaitingForResult = false;
+            mPendingWidgetId = -1;
+            mAppWidgetHost.deleteAppWidgetId(appWidgetId);
+            Toast.makeText(this, R.string.activity_not_found, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showLiveFolderPicker() {
+        final ArrayList<PickerDialog.Entry> entries =
+                queryPickerEntries(new Intent(LiveFolders.ACTION_CREATE_LIVE_FOLDER));
+        // First item: the launcher's own folder (tag: null)
+        entries.add(0, new PickerDialog.Entry(getText(R.string.group_folder),
+                getResources().getDrawable(R.drawable.ic_launcher_folder), null));
+        showPicker(getText(R.string.title_select_live_folder), entries, entry -> {
+            if (entry.tag == null) {
+                if (mAddItemCellInfo != null) addFolder();
+            } else {
+                final Intent intent = new Intent(LiveFolders.ACTION_CREATE_LIVE_FOLDER);
+                intent.setComponent((ComponentName) entry.tag);
+                startActivityForResultSafely(intent, REQUEST_CREATE_LIVE_FOLDER);
+            }
+        });
+    }
+
+    private void showShortcutPicker() {
+        final ArrayList<PickerDialog.Entry> entries =
+                queryPickerEntries(new Intent(Intent.ACTION_CREATE_SHORTCUT));
+        // First item: the installed applications (tag: null)
+        entries.add(0, new PickerDialog.Entry(getText(R.string.group_applications),
+                getResources().getDrawable(R.drawable.ic_launcher_application), null));
+        showPicker(getText(R.string.title_select_shortcut), entries, entry -> {
+            if (entry.tag == null) {
+                showApplicationPicker();
+            } else {
+                final Intent intent = new Intent(Intent.ACTION_CREATE_SHORTCUT);
+                intent.setComponent((ComponentName) entry.tag);
+                startActivityForResultSafely(intent, REQUEST_CREATE_SHORTCUT);
+            }
+        });
+    }
+
+    private void showApplicationPicker() {
+        final Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
+        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+        showPicker(getText(R.string.title_select_application), queryPickerEntries(mainIntent),
+                entry -> {
+                    if (mAddItemCellInfo == null) return;
+                    final Intent data = new Intent(Intent.ACTION_MAIN, null);
+                    data.addCategory(Intent.CATEGORY_LAUNCHER);
+                    data.setComponent((ComponentName) entry.tag);
+                    completeAddApplication(this, data, mAddItemCellInfo);
+                });
+    }
+
+    private void showWallpaperPicker() {
+        final Intent base = new Intent(Intent.ACTION_SET_WALLPAPER);
+        final ArrayList<PickerDialog.Entry> entries = queryPickerEntries(base);
+        if (entries.isEmpty()) {
+            startActivityForResultSafely(
+                    Intent.createChooser(base, getText(R.string.chooser_wallpaper)),
+                    REQUEST_PICK_WALLPAPER);
+            return;
+        }
+        showPicker(getText(R.string.chooser_wallpaper), entries, entry -> {
+            final Intent intent = new Intent(base);
+            intent.setComponent((ComponentName) entry.tag);
+            startActivityForResultSafely(intent, REQUEST_PICK_WALLPAPER);
+        });
     }
 
     private class RenameFolder {
         private EditText mInput;
 
         Dialog createDialog() {
-            final View layout = View.inflate(Launcher.this, R.layout.rename_folder, null);
+            final View layout = View.inflate(GbDialog.themed(Launcher.this), R.layout.rename_folder, null);
             mInput = (EditText) layout.findViewById(R.id.folder_name);
 
-            AlertDialog.Builder builder = new AlertDialog.Builder(Launcher.this);
+            GbDialog.Builder builder = new GbDialog.Builder(Launcher.this);
             builder.setIcon(0);
             builder.setTitle(getString(R.string.rename_folder_title));
             builder.setCancelable(true);
@@ -2313,7 +2486,7 @@ public final class Launcher extends Activity
             );
             builder.setView(layout);
 
-            final AlertDialog dialog = builder.create();
+            final GbDialog dialog = builder.create();
             dialog.setOnShowListener(new DialogInterface.OnShowListener() {
                 public void onShow(DialogInterface dialog) {
                     mWaitingForResult = true;
@@ -2462,13 +2635,13 @@ public final class Launcher extends Activity
         Dialog createDialog() {
             mAdapter = new AddAdapter(Launcher.this);
 
-            final AlertDialog.Builder builder = new AlertDialog.Builder(Launcher.this);
+            final GbDialog.Builder builder = new GbDialog.Builder(Launcher.this);
             builder.setTitle(getString(R.string.menu_item_add_item));
             builder.setAdapter(mAdapter, this);
 
             builder.setInverseBackgroundForced(true);
 
-            AlertDialog dialog = builder.create();
+            GbDialog dialog = builder.create();
             dialog.setOnCancelListener(this);
             dialog.setOnDismissListener(this);
             dialog.setOnShowListener(this);
@@ -2507,45 +2680,12 @@ public final class Launcher extends Activity
                 }
 
                 case AddAdapter.ITEM_APPWIDGET: {
-                    int appWidgetId = Launcher.this.mAppWidgetHost.allocateAppWidgetId();
-
-                    Intent pickIntent = new Intent(AppWidgetManager.ACTION_APPWIDGET_PICK);
-                    pickIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-                    // start the pick activity
-                    try {
-                        startActivityForResult(pickIntent, REQUEST_PICK_APPWIDGET);
-                    } catch (ActivityNotFoundException e) {
-                        // No system widget picker on this device
-                        mWaitingForResult = false;
-                        mAppWidgetHost.deleteAppWidgetId(appWidgetId);
-                        Toast.makeText(Launcher.this, R.string.activity_not_found,
-                                Toast.LENGTH_SHORT).show();
-                    }
+                    showWidgetPicker();
                     break;
                 }
 
                 case AddAdapter.ITEM_LIVE_FOLDER: {
-                    // Insert extra item to handle inserting folder
-                    Bundle bundle = new Bundle();
-
-                    ArrayList<String> shortcutNames = new ArrayList<String>();
-                    shortcutNames.add(res.getString(R.string.group_folder));
-                    bundle.putStringArrayList(Intent.EXTRA_SHORTCUT_NAME, shortcutNames);
-
-                    ArrayList<ShortcutIconResource> shortcutIcons =
-                            new ArrayList<ShortcutIconResource>();
-                    shortcutIcons.add(ShortcutIconResource.fromContext(Launcher.this,
-                            R.drawable.ic_launcher_folder));
-                    bundle.putParcelableArrayList(Intent.EXTRA_SHORTCUT_ICON_RESOURCE, shortcutIcons);
-
-                    Intent pickIntent = new Intent(Intent.ACTION_PICK_ACTIVITY);
-                    pickIntent.putExtra(Intent.EXTRA_INTENT,
-                            new Intent(LiveFolders.ACTION_CREATE_LIVE_FOLDER));
-                    pickIntent.putExtra(Intent.EXTRA_TITLE,
-                            getText(R.string.title_select_live_folder));
-                    pickIntent.putExtras(bundle);
-
-                    startActivityForResultSafely(pickIntent, REQUEST_PICK_LIVE_FOLDER);
+                    showLiveFolderPicker();
                     break;
                 }
 
@@ -2556,7 +2696,9 @@ public final class Launcher extends Activity
 
                 case AddAdapter.ITEM_SETTINGS: { // Tweaks
                     mWaitingForResult = false;
-                    startActivity(new Intent(Launcher.this, Settings.class));
+                    // own task: the settings (text fields, keyboard) must not run inside the home task
+                    startActivity(new Intent(Launcher.this, Settings.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                     break;
                 }
             }
@@ -2665,8 +2807,7 @@ public final class Launcher extends Activity
         private static final String EXTRA_PAGE = "page";
 
         private android.content.SharedPreferences mPrefs;
-        private LinearLayout mList;
-        private boolean mLastWasItem;
+        private GbSettingsList mPage;
 
         @Override
         protected void onCreate(Bundle savedInstanceState) {
@@ -2674,60 +2815,63 @@ public final class Launcher extends Activity
             if (useDroidSans(this)) {
                 getTheme().applyStyle(R.style.DroidSansFont, true);
             }
-            setContentView(R.layout.settings);
-            ((TextView) findViewById(R.id.settings_title)).setText(R.string.group_tweaks);
+            mPage = new GbSettingsList(this, R.string.group_tweaks);
             mPrefs = getSharedPreferences(TWEAKS_PREFERENCES, MODE_PRIVATE);
-            mList = (LinearLayout) findViewById(R.id.settings_list);
 
             // Main page lists the sections, each section has its own page (like Lawnchair)
             final int page = getIntent().getIntExtra(EXTRA_PAGE, 0);
             if (page != 0) {
-                ((TextView) findViewById(R.id.settings_title)).setText(page);
+                mPage.setTitle(page);
             }
             if (page == R.string.tweaks_category_home) {
-                addCategory(R.string.tweaks_category_grid);
+                mPage.addCategory(R.string.tweaks_category_grid);
                 addNumber(R.string.tweaks_columns, TWEAK_HOME_COLUMNS, 3, 7, 4, false);
                 addNumber(R.string.tweaks_rows, TWEAK_HOME_ROWS, 3, 8, 4, false);
-                addCategory(R.string.tweaks_category_screens);
+                mPage.addCategory(R.string.tweaks_category_screens);
                 addNumber(R.string.tweaks_screens, TWEAK_HOME_SCREENS, 1, 5, 5, false);
-                addCategory(R.string.tweaks_category_display);
-                addCheck(R.string.tweaks_no_bar_backgrounds,
-                        R.string.tweaks_no_bar_backgrounds_summary, TWEAK_NO_BAR_BACKGROUNDS);
-                addCheck(R.string.tweaks_system_font, R.string.tweaks_system_font_summary,
-                        TWEAK_SYSTEM_FONT);
-                addCategory(R.string.tweaks_category_gestures);
+                mPage.addCategory(R.string.tweaks_category_gestures);
                 addCheck(R.string.tweaks_swipe_down_notifications,
                         R.string.tweaks_swipe_down_notifications_summary,
                         TWEAK_SWIPE_DOWN_NOTIFICATIONS);
                 addCheck(R.string.tweaks_swipe_up_all_apps,
                         R.string.tweaks_swipe_up_all_apps_summary, TWEAK_SWIPE_UP_ALL_APPS);
-                addCategory(R.string.tweaks_category_feed);
+                mPage.addCategory(R.string.tweaks_category_feed);
                 addChoice(R.string.tweaks_feed, TWEAK_FEED, new int[] {
                         R.string.tweaks_feed_off, R.string.tweaks_feed_google,
                         R.string.tweaks_feed_aidl_bridge });
             } else if (page == R.string.tweaks_category_drawer) {
-                addCategory(R.string.tweaks_category_grid);
+                mPage.addCategory(R.string.tweaks_category_grid);
                 addNumber(R.string.tweaks_columns, TWEAK_DRAWER_COLUMNS, 2, 7, 0, true);
                 addNumber(R.string.tweaks_rows, TWEAK_DRAWER_ROWS, 2, 8, 0, true);
-                addCategory(R.string.tweaks_category_apps);
+                mPage.addCategory(R.string.tweaks_category_apps);
                 final View hidden = addItem(R.string.tweaks_hidden_apps, null);
                 final TextView hiddenSummary =
                         (TextView) hidden.findViewById(R.id.settings_item_summary);
                 updateHiddenSummary(hiddenSummary);
                 hidden.setOnClickListener(v -> showHiddenAppsDialog(hiddenSummary));
-            } else if (page == R.string.tweaks_category_icons) {
-                addCategory(R.string.tweaks_category_icons);
-                addChoice(R.string.tweaks_icon_shape, TWEAK_ICON_SHAPE, new int[] {
-                        R.string.tweaks_icon_shape_system, R.string.tweaks_icon_shape_circle,
-                        R.string.tweaks_icon_shape_squircle,
-                        R.string.tweaks_icon_shape_rounded_rect,
-                        R.string.tweaks_icon_shape_teardrop, R.string.tweaks_icon_shape_square });
+            } else if (page == R.string.tweaks_category_display) {
+                mPage.addCategory(R.string.tweaks_category_system_bars);
+                addCheck(R.string.tweaks_transparent_status_bar,
+                        R.string.tweaks_transparent_bar_summary, TWEAK_TRANSPARENT_STATUS_BAR);
+                addCheck(R.string.tweaks_transparent_nav_bar,
+                        R.string.tweaks_transparent_bar_summary, TWEAK_TRANSPARENT_NAV_BAR);
+                mPage.addCategory(R.string.tweaks_category_font);
+                addCheck(R.string.tweaks_system_font, R.string.tweaks_system_font_summary,
+                        TWEAK_SYSTEM_FONT);
+                mPage.addCategory(R.string.tweaks_category_badges);
                 addCheck(R.string.tweaks_badges, R.string.tweaks_badges_summary, TWEAK_BADGES);
                 final View access = addItem(R.string.tweaks_badges_access, null);
                 mBadgeAccess = (TextView) access.findViewById(R.id.settings_item_summary);
                 access.setOnClickListener(v -> startActivity(new Intent(
                         android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
-                addCategory(R.string.tweaks_icon_pack);
+            } else if (page == R.string.tweaks_category_icons) {
+                mPage.addCategory(R.string.tweaks_category_icons);
+                addChoice(R.string.tweaks_icon_shape, TWEAK_ICON_SHAPE, new int[] {
+                        R.string.tweaks_icon_shape_system, R.string.tweaks_icon_shape_circle,
+                        R.string.tweaks_icon_shape_squircle,
+                        R.string.tweaks_icon_shape_rounded_rect,
+                        R.string.tweaks_icon_shape_teardrop, R.string.tweaks_icon_shape_square });
+                mPage.addCategory(R.string.tweaks_icon_pack);
                 addIconPack();
                 addChoice(R.string.tweaks_icon_pack_where, TWEAK_ICON_PACK_EVERYWHERE,
                         new int[] { R.string.tweaks_icon_pack_home,
@@ -2739,26 +2883,46 @@ public final class Launcher extends Activity
                         DEFAULT_ICON_PACK_FG);
                 addColor(R.string.tweaks_icon_pack_bg, TWEAK_ICON_PACK_BG,
                         DEFAULT_ICON_PACK_BG);
+            } else if (page == R.string.tweaks_category_widgets) {
+                com.google.android.apps.genie.geniewidget.WeatherSettings.add(this, mPage);
+                com.google.android.apps.genie.geniewidget.NewsSettings.add(this, mPage);
+                mYouTube = com.google.android.youtube.widget.YouTubeSettings.add(this, mPage);
             } else if (page == R.string.tweaks_dock) {
-                addCategory(R.string.tweaks_category_dock_apps);
+                mPage.addCategory(R.string.tweaks_category_dock_apps);
                 addDockList();
             } else {
+                addPage(R.string.tweaks_category_display, R.string.tweaks_display_summary);
+                addPage(R.string.tweaks_category_icons, R.string.tweaks_icons_summary);
                 addPage(R.string.tweaks_category_home, R.string.tweaks_home_summary);
                 addPage(R.string.tweaks_category_drawer, R.string.tweaks_drawer_summary);
                 addPage(R.string.tweaks_dock, R.string.tweaks_dock_summary);
-                addPage(R.string.tweaks_category_icons, R.string.tweaks_icons_summary);
+                addPage(R.string.tweaks_category_widgets, R.string.tweaks_widgets_summary);
                 addItem(R.string.tweaks_reset_title, getString(R.string.tweaks_reset_summary))
                         .setOnClickListener(v -> confirmReset());
             }
         }
 
         private TextView mBadgeAccess; // Tweaks: notification access for the badges
+        private com.google.android.youtube.widget.YouTubeSettings mYouTube; // Widgets page
+
+        /** The widget settings page (the widgets open it when they aren't set up yet). */
+        public static Intent widgetsIntent(Context context) {
+            return new Intent(context, Settings.class)
+                    .putExtra(EXTRA_PAGE, R.string.tweaks_category_widgets)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        }
+
+        @Override
+        protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+            super.onActivityResult(requestCode, resultCode, data);
+            if (mYouTube != null) mYouTube.onActivityResult(requestCode, resultCode, data);
+        }
 
         @Override
         protected void onResume() {
             super.onResume();
             if (mBadgeAccess != null) {
-                setSummary(mBadgeAccess, getString(BadgeListener.isEnabled(this)
+                GbSettingsList.setSummary(mBadgeAccess, getString(BadgeListener.isEnabled(this)
                         ? R.string.tweaks_badges_access_on : R.string.tweaks_badges_access_off));
             }
         }
@@ -2773,20 +2937,14 @@ public final class Launcher extends Activity
             list.setDividerDrawable(getResources().getDrawable(
                     R.drawable.gb_divider_horizontal_dark_opaque));
             list.setShowDividers(LinearLayout.SHOW_DIVIDER_MIDDLE);
-            mList.addView(list, new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT));
-            mLastWasItem = true;
+            mPage.addGroup(list);
             final int dividerHeight = list.getDividerDrawable().getIntrinsicHeight();
             final float density = getResources().getDisplayMetrics().density;
 
             for (String item : loadDock(mPrefs)) {
                 final String id = item.startsWith("-") ? item.substring(1) : item;
-                final View row = getLayoutInflater().inflate(
-                        R.layout.settings_preference, list, false);
+                final View row = mPage.createItem(list, getString(dockLabel(id)), null);
                 row.setTag(id);
-                ((TextView) row.findViewById(R.id.settings_item_title)).setText(dockLabel(id));
-                setSummary((TextView) row.findViewById(R.id.settings_item_summary), null);
                 final android.widget.CheckBox box =
                         (android.widget.CheckBox) row.findViewById(R.id.settings_item_checkbox);
                 box.setVisibility(View.VISIBLE);
@@ -2870,35 +3028,8 @@ public final class Launcher extends Activity
                     new Intent(this, Settings.class).putExtra(EXTRA_PAGE, title)));
         }
 
-        private void addCategory(int title) {
-            final TextView v = (TextView) getLayoutInflater().inflate(
-                    R.layout.settings_category, mList, false);
-            v.setText(title);
-            mList.addView(v);
-            mLastWasItem = false;
-        }
-
         private View addItem(int title, CharSequence summary) {
-            // ListView divider between two enabled items (not next to a category)
-            if (mLastWasItem) {
-                final View divider = new View(this);
-                divider.setBackgroundResource(R.drawable.gb_divider_horizontal_dark_opaque);
-                mList.addView(divider, new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT));
-            }
-            final View v = getLayoutInflater().inflate(R.layout.settings_preference, mList, false);
-            ((TextView) v.findViewById(R.id.settings_item_title)).setText(title);
-            setSummary((TextView) v.findViewById(R.id.settings_item_summary), summary);
-            mList.addView(v);
-            mLastWasItem = true;
-            return v;
-        }
-
-        private static void setSummary(TextView view, CharSequence summary) {
-            view.setText(summary);
-            view.setVisibility(summary == null || summary.length() == 0
-                    ? View.GONE : View.VISIBLE);
+            return mPage.addItem(title, summary);
         }
 
         private void addCheck(int title, int summary, final String key) {
@@ -2954,7 +3085,7 @@ public final class Launcher extends Activity
                 mPrefs.edit().putInt(key, c).putBoolean(wallpaperKey, false).apply();
                 sChanged = true;
                 sIconsChanged = true;
-                setSummary(summary, colorName(c, false));
+                GbSettingsList.setSummary(summary, colorName(c, false));
             };
             v.setOnClickListener(view -> {
                 int checked = -1;
@@ -2962,7 +3093,7 @@ public final class Launcher extends Activity
                     if (COLOR_VALUES[i] == color[0]) checked = i;
                 }
                 if (mPrefs.getBoolean(wallpaperKey, false)) checked = COLOR_VALUES.length;
-                new AlertDialog.Builder(this)
+                new GbDialog.Builder(this)
                         .setTitle(title)
                         .setSingleChoiceItems(labels, checked, (dialog, which) -> {
                             dialog.dismiss();
@@ -2972,7 +3103,7 @@ public final class Launcher extends Activity
                                 mPrefs.edit().putBoolean(wallpaperKey, true).apply();
                                 sChanged = true;
                                 sIconsChanged = true;
-                                setSummary(summary, colorName(color[0], true));
+                                GbSettingsList.setSummary(summary, colorName(color[0], true));
                             } else {
                                 askHexColor(title, color[0], set);
                             }
@@ -2983,15 +3114,12 @@ public final class Launcher extends Activity
         }
 
         private void askHexColor(int title, int current, java.util.function.IntConsumer set) {
-            final android.widget.EditText input = new android.widget.EditText(this);
+            final android.widget.EditText input = GbDialog.newEditText(this);
             input.setSingleLine(true);
             input.setText(hex(current));
             input.setSelection(input.getText().length());
-            final int pad = (int) (16 * getResources().getDisplayMetrics().density);
-            final android.widget.FrameLayout frame = new android.widget.FrameLayout(this);
-            frame.setPadding(pad, pad / 2, pad, 0);
-            frame.addView(input);
-            new AlertDialog.Builder(this)
+            final View frame = GbDialog.wrapField(this, input);
+            new GbDialog.Builder(this)
                     .setTitle(title)
                     .setView(frame)
                     .setPositiveButton(android.R.string.ok, (dialog, which) -> {
@@ -3036,14 +3164,14 @@ public final class Launcher extends Activity
             }
             final View v = addItem(R.string.tweaks_icon_pack, labels[selected[0]]);
             final TextView summary = (TextView) v.findViewById(R.id.settings_item_summary);
-            v.setOnClickListener(view -> new AlertDialog.Builder(this)
+            v.setOnClickListener(view -> new GbDialog.Builder(this)
                     .setTitle(R.string.tweaks_icon_pack)
                     .setSingleChoiceItems(labels, selected[0], (dialog, which) -> {
                         selected[0] = which;
                         mPrefs.edit().putString(TWEAK_ICON_PACK, pkgs[which]).apply();
                         sChanged = true;
                         sIconsChanged = true;
-                        setSummary(summary, labels[which]);
+                        GbSettingsList.setSummary(summary, labels[which]);
                         dialog.dismiss();
                     })
                     .setNegativeButton(android.R.string.cancel, null)
@@ -3058,14 +3186,14 @@ public final class Launcher extends Activity
                     mPrefs.getInt(key, 0))) };
             final View v = addItem(title, labels[selected[0]]);
             final TextView summary = (TextView) v.findViewById(R.id.settings_item_summary);
-            v.setOnClickListener(view -> new AlertDialog.Builder(this)
+            v.setOnClickListener(view -> new GbDialog.Builder(this)
                     .setTitle(title)
                     .setSingleChoiceItems(labels, selected[0], (dialog, which) -> {
                         selected[0] = which;
                         mPrefs.edit().putInt(key, which).apply();
                         sChanged = true;
                         sIconsChanged = true;
-                        setSummary(summary, labels[which]);
+                        GbSettingsList.setSummary(summary, labels[which]);
                         dialog.dismiss();
                     })
                     .setNegativeButton(android.R.string.cancel, null)
@@ -3095,24 +3223,17 @@ public final class Launcher extends Activity
                 else if (stored > max && values[j] == max) index = j;
             }
             final int[] selected = { index };
-            final View v = addItem(title, labels[index]);
-            final TextView summary = (TextView) v.findViewById(R.id.settings_item_summary);
-            v.setOnClickListener(view -> new AlertDialog.Builder(this)
-                    .setTitle(title)
-                    .setSingleChoiceItems(labels, selected[0], (dialog, which) -> {
-                        selected[0] = which;
-                        mPrefs.edit().putInt(key, values[which]).apply();
-                        sChanged = true;
-                        setSummary(summary, labels[which]);
-                        dialog.dismiss();
-                    })
-                    .setNegativeButton(android.R.string.cancel, null)
-                    .show());
+            mPage.addSlider(title, labels, index, which -> {
+                if (which == selected[0]) return;
+                selected[0] = which;
+                mPrefs.edit().putInt(key, values[which]).apply();
+                sChanged = true;
+            });
         }
 
         private void confirmReset() {
-            new AlertDialog.Builder(this)
-                    .setIcon(android.R.drawable.ic_dialog_alert)
+            new GbDialog.Builder(this)
+                    .setIcon(R.drawable.gb_ic_dialog_alert)
                     .setTitle(R.string.tweaks_reset_title)
                     .setMessage(R.string.tweaks_reset_confirm)
                     .setPositiveButton(android.R.string.ok, (dialog, which) -> {
@@ -3128,7 +3249,7 @@ public final class Launcher extends Activity
         private void updateHiddenSummary(TextView summary) {
             final int n = mPrefs.getStringSet(TWEAK_HIDDEN_APPS,
                     new java.util.HashSet<String>()).size();
-            setSummary(summary, n == 0 ? null
+            GbSettingsList.setSummary(summary, n == 0 ? null
                     : getResources().getQuantityString(R.plurals.tweaks_hidden_count, n, n));
         }
 
@@ -3155,7 +3276,7 @@ public final class Launcher extends Activity
                 checked[i] = hidden.contains(components[i]);
             }
 
-            new AlertDialog.Builder(this)
+            new GbDialog.Builder(this)
                     .setTitle(R.string.tweaks_hidden_apps)
                     .setMultiChoiceItems(labels, checked,
                             (dialog, which, isChecked) -> checked[which] = isChecked)

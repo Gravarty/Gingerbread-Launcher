@@ -16,6 +16,7 @@
 
 package com.android.launcher2;
 
+import android.appwidget.AppWidgetHost;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProviderInfo;
 import android.content.BroadcastReceiver;
@@ -450,6 +451,8 @@ public class LauncherModel extends BroadcastReceiver {
         private boolean mIsLaunching;
         private boolean mStopped;
         private boolean mLoadAndBindStepFinished;
+        // Tweaks: items outside the current grid (removed screens), deleted after loading
+        private final ArrayList<ItemInfo> mOutsideGrid = new ArrayList<ItemInfo>();
 
         LoaderTask(Context context, boolean isLaunching) {
             mContext = context;
@@ -572,21 +575,10 @@ public class LauncherModel extends BroadcastReceiver {
                 }
             }
 
-            // Trigger a gc to try to clean up after the stuff is done, since the
-            // renderscript allocations aren't charged to the java heap.
-            if (mStopped) {
-                mHandler.post(new Runnable() {
-                        public void run() {
-                            System.gc();
-                        }
-                    });
-            } else {
-                mHandler.postIdle(new Runnable() {
-                        public void run() {
-                            System.gc();
-                        }
-                    });
-            }
+            // Perf: Gingerbread forced a gc() here because the renderscript allocations
+            // weren't charged to the java heap. The GL drawer uploads plain bitmaps now,
+            // and a forced full gc on the UI thread right after (re)binding only costs a
+            // hitch on ART.
         }
 
         public void stopLocked() {
@@ -632,6 +624,19 @@ public class LauncherModel extends BroadcastReceiver {
                 return true;
             }
 
+            // Tweaks: items outside the current grid (e.g. on a screen that no longer exists
+            // after reducing the number of home screens) are discarded and deleted afterwards
+            if (item.screen < 0 || item.screen >= occupied.length
+                    || item.cellX < 0 || item.cellY < 0
+                    || item.cellX + item.spanX > occupied[item.screen].length
+                    || item.cellY + item.spanY > occupied[item.screen][0].length) {
+                Log.w(TAG, "Removing item outside the grid " + item
+                        + " (screen " + item.screen + ", cell " + item.cellX + "," + item.cellY
+                        + ", span " + item.spanX + "x" + item.spanY + ")");
+                mOutsideGrid.add(item);
+                return false;
+            }
+
             for (int x = item.cellX; x < (item.cellX+item.spanX); x++) {
                 for (int y = item.cellY; y < (item.cellY+item.spanY); y++) {
                     if (occupied[item.screen][x][y] != null) {
@@ -664,6 +669,7 @@ public class LauncherModel extends BroadcastReceiver {
             mItems.clear();
             mAppWidgets.clear();
             mFolders.clear();
+            mOutsideGrid.clear(); // Tweaks
 
             final ArrayList<Long> itemsToRemove = new ArrayList<Long>();
 
@@ -899,6 +905,26 @@ public class LauncherModel extends BroadcastReceiver {
             } finally {
                 c.close();
             }
+
+            // Tweaks: delete what is on screens or cells that no longer exist
+            for (ItemInfo item : mOutsideGrid) {
+                itemsToRemove.add(item.id);
+                if (item instanceof LauncherAppWidgetInfo) {
+                    try {
+                        new AppWidgetHost(context, Launcher.APPWIDGET_HOST_ID).deleteAppWidgetId(
+                                ((LauncherAppWidgetInfo) item).appWidgetId);
+                    } catch (RuntimeException e) {
+                        Log.w(TAG, "Could not release widget id of item " + item.id, e);
+                    }
+                } else if (item instanceof FolderInfo) {
+                    // the folder's contents would stay behind as orphans
+                    mFolders.remove(item.id);
+                    contentResolver.delete(LauncherSettings.Favorites.CONTENT_URI,
+                            LauncherSettings.Favorites.CONTAINER + "=?",
+                            new String[] { Long.toString(item.id) });
+                }
+            }
+            mOutsideGrid.clear();
 
             if (itemsToRemove.size() > 0) {
                 ContentProviderClient client = contentResolver.acquireContentProviderClient(

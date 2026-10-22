@@ -678,6 +678,18 @@ public class CellLayout extends ViewGroup {
 
     @Override
     protected void setChildrenDrawingCacheEnabled(boolean enabled) {
+        // Perf: Gingerbread rendered in software and cached every child as a bitmap while
+        // scrolling. With a hardware accelerated window the cache is never drawn from, but
+        // building it (software render of every icon and widget on all visible screens, on
+        // the UI thread) used to stall the start of each scroll. The display lists are
+        // already cached by the renderer, so there is nothing to do.
+        // Perf: but the ops of every icon/widget are still replayed each frame. Like Launcher3
+        // (drawLayer of the page), keep the page as a hardware layer while it scrolls:
+        // Workspace.enableChildrenCache() / clearChildrenCache() bracket the scroll.
+        if (isHardwareAccelerated()) {
+            setLayerType(enabled ? LAYER_TYPE_HARDWARE : LAYER_TYPE_NONE, null);
+            return;
+        }
         final int count = getChildCount();
         for (int i = 0; i < count; i++) {
             final View view = getChildAt(i);
@@ -689,6 +701,12 @@ public class CellLayout extends ViewGroup {
 
     @Override
     protected void setChildrenDrawnWithCacheEnabled(boolean enabled) {
+        // Perf: see setChildrenDrawingCacheEnabled(); Workspace.clearChildrenCache() only
+        // calls this one, so this is where the page's layer is released again.
+        if (isHardwareAccelerated()) {
+            if (!enabled) setLayerType(LAYER_TYPE_NONE, null);
+            return;
+        }
         super.setChildrenDrawnWithCacheEnabled(enabled);
     }
 

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="genie_news_widget_label">"News und Wetter"</string>
+    <string name="genie_news_category">"News"</string>
+    <string name="genie_news_feeds">"RSS-Feeds"</string>
+    <string name="genie_news_feeds_none">"Nicht konfiguriert"</string>
+    <plurals name="genie_news_feeds_count">
+        <item quantity="one">"%d Feed"</item>
+        <item quantity="other">"%d Feeds"</item>
+    </plurals>
+    <string name="genie_news_feeds_message">"RSS- oder Atom-Feed-URLs, eine pro Zeile:"</string>
+    <string name="genie_news_feeds_invalid">"Keine gültigen Feed-URLs gefunden."</string>
+    <string name="genie_news_hint">"Tippen, um News-Feeds in den Launcher-Einstellungen hinzuzufügen"</string>
+    <string name="genie_news_unavailable">"Nachrichten sind derzeit nicht verfügbar."</string>
+    <string name="genie_news_try_again">"Verbindung nicht möglich. Zum Wiederholen tippen."</string>
+</resources>

@@ -3,18 +3,18 @@
      settings for OpenWeatherMap -->
 <resources>
     <string name="genie_widget_weather">Weather</string>
-    <string name="genie_loading">Loading...</string>
-    <string name="genie_retrying">Sorry, unable to connect. Please try later.</string>
+    <string name="genie_loading">Loading…</string>
+    <string name="genie_retrying">Unable to connect. Please try again later.</string>
     <string name="genie_retrynow">Retry now</string>
-    <string name="genie_weather_unavailable">No weather information</string>
-    <string name="genie_enterlocation">Enter a city or postal code:</string>
+    <string name="genie_weather_unavailable">Weather data unavailable</string>
+    <string name="genie_enterlocation">Enter a city name or postal code:</string>
     <string name="genie_searching">Searching...</string>
-    <string name="genie_networkfailure">Sorry, network error. Please try later.</string>
-    <string name="genie_setlocationfailed">Sorry, couldn\'t find a location matching \'%s.\'</string>
+    <string name="genie_networkfailure">Network error. Please try again later.</string>
+    <string name="genie_setlocationfailed">No location found for “%s”.</string>
     <string name="genie_category_weather">OpenWeatherMap</string>
-    <string name="genie_category_app">Tap</string>
+    <string name="genie_category_app">On tap</string>
     <string name="genie_api_key">API key</string>
-    <string name="genie_api_key_hint">Your OpenWeatherMap API key:</string>
+    <string name="genie_api_key_hint">OpenWeatherMap API key:</string>
     <string name="genie_location">Location</string>
     <string name="genie_weather_app">Weather app</string>
     <string name="genie_not_set">Not set</string>

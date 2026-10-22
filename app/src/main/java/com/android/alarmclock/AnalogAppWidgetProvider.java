@@ -55,7 +55,9 @@ public class AnalogAppWidgetProvider extends BroadcastReceiver {
                     AppWidgetManager.EXTRA_APPWIDGET_IDS);
 
             AppWidgetManager gm = AppWidgetManager.getInstance(context);
-            gm.updateAppWidget(appWidgetIds, views);
+            for (int id : appWidgetIds) {
+                com.android.launcher2.LauncherOnly.update(context, gm, id, views);
+            }
         }
     }
 }

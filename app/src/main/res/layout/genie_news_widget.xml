@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Port: layout-port/miniwidget of Google's "News and Weather" 1.3.01 (the widget with the
+     weather on the left and the news on the right), with widget_loading / widget_retry
+     included. The widget keeps the height of a Gingerbread row (100dp) and is centered when
+     a launcher gives it more (like genie_weather_widget). -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <RelativeLayout
+        android:id="@+id/news_widget"
+        android:background="@drawable/genie_appwidget_dark_bg"
+        android:layout_width="match_parent"
+        android:layout_height="100dp"
+        android:layout_gravity="center_vertical">
+
+        <!-- loading / retry (the same as in the weather widget) -->
+        <include layout="@layout/genie_weather_widget_states" />
+
+        <RelativeLayout
+            android:id="@+id/content"
+            android:visibility="gone"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <RelativeLayout
+                android:id="@+id/weather"
+                android:background="@drawable/appwidget_button_left"
+                android:gravity="center"
+                android:paddingLeft="4dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:focusable="true"
+                android:visibility="gone"
+                android:layout_width="@dimen/genie_news_weather_width"
+                android:layout_height="match_parent">
+
+                <ImageView
+                    android:id="@+id/weather_icon"
+                    android:layout_width="45dp"
+                    android:layout_height="45dp"
+                    android:layout_alignParentTop="true"
+                    android:layout_centerHorizontal="true" />
+
+                <TextView
+                    android:id="@+id/weather_temp"
+                    android:textSize="22dp"
+                    android:textStyle="bold"
+                    android:textColor="@android:color/white"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentBottom="true"
+                    android:layout_centerHorizontal="true" />
+
+                <TextView
+                    android:id="@+id/weather_unavailable"
+                    android:textSize="10dp"
+                    android:textColor="@color/genie_news_primary"
+                    android:ellipsize="end"
+                    android:gravity="center"
+                    android:visibility="gone"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/genie_weather_unavailable"
+                    android:layout_centerHorizontal="true"
+                    android:layout_centerVertical="true" />
+            </RelativeLayout>
+
+            <ViewFlipper
+                android:id="@+id/news_flip"
+                android:background="@drawable/appwidget_button_right"
+                android:paddingLeft="7dp"
+                android:paddingTop="4dp"
+                android:paddingRight="@dimen/genie_news_padding_right"
+                android:paddingBottom="2dp"
+                android:addStatesFromChildren="true"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:measureAllChildren="false"
+                android:inAnimation="@anim/genie_news_in"
+                android:outAnimation="@anim/genie_news_out"
+                android:flipInterval="@integer/genie_news_interval"
+                android:layout_toRightOf="@id/weather"
+                android:layout_alignParentRight="true"
+                android:autoStart="true" />
+
+            <!-- Messages (no feeds / loading / unavailable) live outside the flipper: a
+                 ViewFlipper plays its transition even with a single child. -->
+            <FrameLayout
+                android:id="@+id/news_empty_box"
+                android:background="@drawable/appwidget_button_right"
+                android:paddingLeft="7dp"
+                android:paddingTop="4dp"
+                android:paddingRight="@dimen/genie_news_padding_right"
+                android:paddingBottom="2dp"
+                android:visibility="gone"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_toRightOf="@id/weather"
+                android:layout_alignParentRight="true">
+                <include
+                    android:id="@+id/news_empty"
+                    layout="@layout/genie_news_message" />
+            </FrameLayout>
+        </RelativeLayout>
+    </RelativeLayout>
+</FrameLayout>

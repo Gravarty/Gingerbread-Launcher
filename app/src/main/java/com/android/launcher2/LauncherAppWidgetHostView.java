@@ -22,6 +22,9 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.ViewGroup;
+import android.widget.RemoteViews;
+import android.widget.ViewAnimator;
 
 import com.android.launcher.R;
 
@@ -49,6 +52,59 @@ public class LauncherAppWidgetHostView extends AppWidgetHostView {
     public void setAppWidget(int appWidgetId, android.appwidget.AppWidgetProviderInfo info) {
         super.setAppWidget(appWidgetId, info);
         setPadding(0, 0, 0, 0);
+    }
+
+    /**
+     * Port: a widget that is rebuilt (e.g. its layout changes when it is resized across a
+     * size class) would start its ViewFlipper at the first child again. Keep the position.
+     */
+    @Override
+    public void updateAppWidget(RemoteViews remoteViews) {
+        final ViewAnimator before = findAnimator(this);
+        final int position = before == null ? -1 : before.getDisplayedChild();
+        // Fix: stale fade animations kept removed stories drawn on top of the new ones
+        if (before != null) clearStaleAnimations(before, -1);
+        super.updateAppWidget(remoteViews);
+        final ViewAnimator after = findAnimator(this);
+        if (after != null && position > 0 && position < after.getChildCount()) {
+            after.setDisplayedChild(position);
+        }
+        if (after != null) clearStaleAnimations(after, after.getDisplayedChild());
+    }
+
+    /**
+     * Fix: while the launcher is in the background the ViewFlipper's fade animations don't run
+     * to the end. When the launcher returns, the old story is still drawn over the current one.
+     */
+    @Override
+    protected void onWindowVisibilityChanged(int visibility) {
+        super.onWindowVisibilityChanged(visibility);
+        if (visibility == View.VISIBLE) {
+            final ViewAnimator a = findAnimator(this);
+            if (a != null) clearStaleAnimations(a, a.getDisplayedChild());
+        }
+    }
+
+    /** Clears the animations of all children but keep (-1: all); the others are hidden. */
+    private static void clearStaleAnimations(ViewAnimator a, int keep) {
+        for (int i = 0; i < a.getChildCount(); i++) {
+            if (i == keep) continue;
+            final View c = a.getChildAt(i);
+            c.clearAnimation();
+            if (keep >= 0) c.setVisibility(View.GONE);
+        }
+    }
+
+    private static ViewAnimator findAnimator(View v) {
+        if (v instanceof ViewAnimator) return (ViewAnimator) v;
+        if (v instanceof ViewGroup) {
+            final ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) {
+                final ViewAnimator a = findAnimator(g.getChildAt(i));
+                if (a != null) return a;
+            }
+        }
+        return null;
     }
 
     @Override

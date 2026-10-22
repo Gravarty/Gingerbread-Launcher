@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Port: strings of the YouTube widget (new videos from your subscriptions, via the
+     channels' RSS feeds) -->
+<resources>
+    <string name="yt_widget_label">YouTube</string>
+    <string name="yt_loading">Loading…</string>
+    <string name="yt_no_channels">No channels</string>
+    <string name="yt_no_channels_hint">Tap to select channels</string>
+    <string name="yt_category_subs">Subscriptions</string>
+    <string name="yt_channels">Channels</string>
+    <string name="yt_channels_count">%d channels</string>
+    <string name="yt_channels_none">None</string>
+    <string name="yt_channels_message">Channel IDs (UC…) or channel links, one per line:</string>
+    <string name="yt_import">Import subscriptions</string>
+    <string name="yt_import_summary">Select the subscriptions.csv file from a Google Takeout export</string>
+    <string name="yt_imported">%d channels imported</string>
+    <string name="yt_import_failed">No channels found in the selected file</string>
+    <string name="yt_refresh_interval">Refresh interval</string>
+    <string name="yt_save">Save</string>
+    <string name="yt_widget_subscription_update">Subscription update</string>
+    <string name="yt_widget_try_again">Connection error. Tap to try again.</string>
+</resources>

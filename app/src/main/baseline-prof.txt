@@ -1,0 +1,12 @@
+# Baseline profile: compile all launcher classes/methods ahead of time.
+# Hot (H), startup (S), post-startup (P) flags for everything in the launcher packages.
+HSPLcom/android/launcher2/**;->**(**)**
+HSPLcom/android/settings/widget/**;->**(**)**
+HSPLcom/android/alarmclock/**;->**(**)**
+HSPLcom/android/quicksearchbox/**;->**(**)**
+HSPLcom/google/android/libraries/launcherclient/**;->**(**)**
+Lcom/android/launcher2/**;
+Lcom/android/settings/widget/**;
+Lcom/android/alarmclock/**;
+Lcom/android/quicksearchbox/**;
+Lcom/google/android/libraries/launcherclient/**;

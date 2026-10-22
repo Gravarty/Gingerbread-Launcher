@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="genie_widget_weather">"Wetter"</string>
-    <string name="genie_loading">"Wird geladen..."</string>
-    <string name="genie_retrying">"Es kann keine Verbindung hergestellt werden. Versuchen Sie es später erneut."</string>
+    <string name="genie_loading">"Wird geladen…"</string>
+    <string name="genie_retrying">"Verbindung nicht möglich. Bitte versuchen Sie es später erneut."</string>
     <string name="genie_retrynow">"Jetzt wiederholen"</string>
-    <string name="genie_weather_unavailable">"Keine Wetterinformationen"</string>
-    <string name="genie_enterlocation">"Geben Sie eine Stadt oder eine Postleitzahl ein:"</string>
-    <string name="genie_searching">"Suchvorgang läuft..."</string>
-    <string name="genie_networkfailure">"Netzwerkfehler. Versuchen Sie es später erneut."</string>
-    <string name="genie_setlocationfailed">"Wir konnten leider keinen Standort mit den folgenden Kriterien finden: \"%s\"."</string>
+    <string name="genie_weather_unavailable">"Keine Wetterdaten verfügbar"</string>
+    <string name="genie_enterlocation">"Stadt oder Postleitzahl eingeben:"</string>
+    <string name="genie_searching">"Suche läuft…"</string>
+    <string name="genie_networkfailure">"Netzwerkfehler. Bitte versuchen Sie es später erneut."</string>
+    <string name="genie_setlocationfailed">"Für „%s“ wurde kein Standort gefunden."</string>
     <string name="genie_category_weather">"OpenWeatherMap"</string>
-    <string name="genie_category_app">"Antippen"</string>
+    <string name="genie_category_app">"Beim Antippen"</string>
     <string name="genie_api_key">"API-Schlüssel"</string>
-    <string name="genie_api_key_hint">"Ihr OpenWeatherMap-API-Schlüssel:"</string>
+    <string name="genie_api_key_hint">"OpenWeatherMap-API-Schlüssel:"</string>
     <string name="genie_location">"Standort"</string>
     <string name="genie_weather_app">"Wetter-App"</string>
     <string name="genie_not_set">"Nicht festgelegt"</string>

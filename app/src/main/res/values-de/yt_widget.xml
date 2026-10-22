@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="yt_widget_label">YouTube</string>
+    <string name="yt_loading">"Wird geladen…"</string>
+    <string name="yt_no_channels">Keine Kanäle</string>
+    <string name="yt_no_channels_hint">"Tippen, um Kanäle auszuwählen"</string>
+    <string name="yt_category_subs">Abos</string>
+    <string name="yt_channels">Kanäle</string>
+    <string name="yt_channels_count">%d Kanäle</string>
+    <string name="yt_channels_none">Keine</string>
+    <string name="yt_channels_message">Kanal-IDs (UC…) oder Kanal-Links, einer pro Zeile:</string>
+    <string name="yt_import">"Abos importieren"</string>
+    <string name="yt_import_summary">"Datei subscriptions.csv aus einem Google-Takeout-Export auswählen"</string>
+    <string name="yt_imported">%d Kanäle importiert</string>
+    <string name="yt_import_failed">"In der ausgewählten Datei wurden keine Kanäle gefunden"</string>
+    <string name="yt_refresh_interval">Aktualisierungsintervall</string>
+    <string name="yt_save">Speichern</string>
+    <string name="yt_widget_subscription_update">Abo-Update</string>
+    <string name="yt_widget_try_again">"Verbindungsfehler. Zum Wiederholen tippen."</string>
+</resources>

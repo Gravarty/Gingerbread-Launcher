@@ -426,18 +426,32 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
         updateWallpaperOffset(getChildAt(getChildCount() - 1).getRight() - getWidth());
     }
 
+    // Perf: both WallpaperManager calls are binder IPCs and this runs every scroll frame.
+    // Only send what actually changed.
+    private IBinder mLastWallpaperToken;
+    private int mLastWallpaperSteps = -1;
+    private float mLastWallpaperOffsetX = Float.NaN;
+
     private void updateWallpaperOffset(int scrollRange) {
         IBinder token = getWindowToken();
         if (token != null) {
+            final boolean newToken = token != mLastWallpaperToken;
+            mLastWallpaperToken = token;
+
             // Tweaks: with a single screen there's nothing to scroll; center the wallpaper
-            if (getChildCount() < 2 || scrollRange <= 0) {
-                mWallpaperManager.setWallpaperOffsetSteps(0, 0);
-                mWallpaperManager.setWallpaperOffsets(getWindowToken(), 0.5f, 0);
-                return;
+            final boolean single = getChildCount() < 2 || scrollRange <= 0;
+            final int steps = single ? 0 : getChildCount() - 1;
+            if (newToken || steps != mLastWallpaperSteps) {
+                mLastWallpaperSteps = steps;
+                mWallpaperManager.setWallpaperOffsetSteps(single ? 0 : 1.0f / steps, 0);
             }
-            mWallpaperManager.setWallpaperOffsetSteps(1.0f / (getChildCount() - 1), 0 );
-            mWallpaperManager.setWallpaperOffsets(getWindowToken(),
-                    Math.max(0.f, Math.min(getScrollX()/(float)scrollRange, 1.f)), 0);
+
+            final float x = single ? 0.5f
+                    : Math.max(0.f, Math.min(getScrollX() / (float) scrollRange, 1.f));
+            if (newToken || x != mLastWallpaperOffsetX) {
+                mLastWallpaperOffsetX = x;
+                mWallpaperManager.setWallpaperOffsets(token, x, 0);
+            }
         }
     }
     

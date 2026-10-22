@@ -20,6 +20,10 @@
 <resources>
     <style name="Theme" parent="android:Theme.Wallpaper">
         <item name="android:windowNoTitle">true</item>
+        <!-- Tweaks: no system scrim behind transparent bars (3-button navigation) -->
+        <item name="android:enforceStatusBarContrast">false</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:navigationBarDividerColor">@android:color/transparent</item>
     </style>
 
     <!-- Port: settings of the weather widget (Gingerbread dark theme, own title bar) -->
@@ -98,5 +102,31 @@
     <!-- Tweaks: launcher settings window (Gingerbread dark theme, own title bar) -->
     <style name="Theme.Settings" parent="android:Theme.NoTitleBar">
         <item name="android:windowBackground">@android:color/black</item>
+    </style>
+
+    <!-- Gingerbread dialogs (GbDialog): transparent window, the popup frames come from the layout -->
+    <style name="Theme.GbDialog" parent="@android:style/Theme.DeviceDefault.Dialog.NoActionBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowFrame">@null</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:textColorPrimary">@color/gb_primary_text_dark</item>
+        <item name="android:textColorSecondary">@color/gb_secondary_text_dark</item>
+        <item name="android:textColorPrimaryInverse">@color/gb_primary_text_light_disable_only</item>
+        <item name="android:editTextBackground">@drawable/gb_edit_text</item>
+        <item name="android:editTextColor">@android:color/black</item>
+    </style>
+
+    <style name="GbDialogButton">
+        <item name="android:layout_width">0dip</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:maxLines">2</item>
+        <item name="android:background">@drawable/gb_btn_default</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/gb_primary_text_light_nodisable</item>
+        <item name="android:gravity">center</item>
+        <item name="android:focusable">true</item>
+        <item name="android:clickable">true</item>
+        <item name="android:visibility">gone</item>
     </style>
 </resources>

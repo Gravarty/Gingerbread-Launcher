@@ -49,6 +49,8 @@
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <!-- Port: the weather widget of "News and Weather" (OpenWeatherMap) -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Port: the YouTube widget's FeedJob needs a network (JobScheduler connectivity constraint) -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Port: the "Power Control" widget from Settings -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
@@ -97,6 +99,7 @@
         <activity
             android:name="com.android.launcher2.Launcher$Settings"
             android:label="@string/group_tweaks"
+            android:taskAffinity="com.gravarty.launcher2.settings"
             android:theme="@style/Theme.Settings"
             android:screenOrientation="nosensor"
             android:excludeFromRecents="true"
@@ -180,15 +183,40 @@
             <meta-data android:name="android.appwidget.provider"
                 android:resource="@xml/genie_weather_widget_info" />
         </receiver>
-        <activity android:name="com.google.android.apps.genie.geniewidget.WeatherWidgetConfigure"
-            android:label="@string/genie_widget_weather"
-            android:theme="@style/Theme.GenieConfigure"
-            android:excludeFromRecents="true"
-            android:exported="false">
+
+        <!-- Port: the widget of Google's "News and Weather" 1.3.01 with the weather on the left
+             and the news on the right (RSS feeds of the launcher settings, loaded by NewsFeedJob) -->
+        <receiver android:name="com.google.android.apps.genie.geniewidget.NewsWidgetProvider"
+            android:label="@string/genie_news_widget_label" android:exported="false">
             <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.appwidget.action.APPWIDGET_ENABLE" />
+                <action android:name="android.appwidget.action.APPWIDGET_DISABLE" />
+                <action android:name="com.android.launcher.genie.NEWS_RETRY" />
             </intent-filter>
-        </activity>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/genie_news_widget_info" />
+        </receiver>
+        <service android:name="com.google.android.apps.genie.geniewidget.NewsFeedJob"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="false" />
+
+        <!-- Port: the YouTube widget of YouTube 1.6.19, showing the newest videos of your
+             subscriptions (RSS feeds of the channels, loaded by FeedJob) -->
+        <receiver android:name="com.google.android.youtube.widget.WidgetProvider"
+            android:label="@string/yt_widget_label" android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.appwidget.action.APPWIDGET_ENABLE" />
+                <action android:name="android.appwidget.action.APPWIDGET_DISABLE" />
+                <action android:name="com.google.android.youtube.REFRESH_TEASER_ACTION" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/yt_widget_info" />
+        </receiver>
+        <service android:name="com.google.android.youtube.widget.FeedJob"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="false" />
 
         <!-- Port: the "Power Control" widget from AOSP Settings (android-2.3.7_r1).
              The state broadcasts are forwarded by LauncherApplication. -->

@@ -7,7 +7,6 @@
     android:targetCellHeight="1"
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/genie_weather_widget"
-    android:configure="com.google.android.apps.genie.geniewidget.WeatherWidgetConfigure"
-    android:widgetFeatures="reconfigurable"
+    android:widgetFeatures="hide_from_picker"
     android:resizeMode="horizontal">
 </appwidget-provider>

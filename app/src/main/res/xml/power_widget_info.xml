@@ -21,5 +21,6 @@
     android:targetCellHeight="1"
     android:initialLayout="@layout/power_widget"
     android:resizeMode="horizontal"
+    android:widgetFeatures="hide_from_picker"
     >
 </appwidget-provider>

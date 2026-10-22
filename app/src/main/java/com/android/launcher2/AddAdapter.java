@@ -16,7 +16,6 @@
 
 package com.android.launcher2;
 
-import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
@@ -66,7 +65,7 @@ public class AddAdapter extends BaseAdapter {
     public AddAdapter(Launcher launcher) {
         super();
 
-        mInflater = (LayoutInflater) launcher.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        mInflater = LayoutInflater.from(GbDialog.themed(launcher));
         
         // Create default actions
         Resources res = launcher.getResources();

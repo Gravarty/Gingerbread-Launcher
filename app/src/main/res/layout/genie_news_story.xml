@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Port: layout-port/miniwidget_story of Google's "News and Weather" 1.3.01 (one story of
+     the flipper: headline and source; the original's picture is only shown without the weather) -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="horizontal"
+    android:addStatesFromChildren="true"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <LinearLayout
+        android:id="@+id/news"
+        android:orientation="vertical"
+        android:gravity="center_vertical"
+        android:paddingLeft="4dp"
+        android:focusable="true"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginLeft="3dp"
+        android:layout_marginTop="1dp"
+        android:layout_marginBottom="2dp"
+        android:layout_weight="1">
+        <TextView
+            android:id="@+id/news_headline"
+            android:textSize="14dp"
+            android:textColor="@color/genie_news_primary"
+            android:ellipsize="end"
+            android:duplicateParentState="true"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="3" />
+        <TextView
+            android:id="@+id/news_source"
+            android:textSize="11dp"
+            android:textColor="@color/genie_news_secondary"
+            android:ellipsize="end"
+            android:duplicateParentState="true"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:singleLine="true" />
+    </LinearLayout>
+</LinearLayout>

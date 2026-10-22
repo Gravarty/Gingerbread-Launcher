@@ -37,6 +37,7 @@
         android:capitalize="none"
         android:gravity="fill_horizontal"
         android:maxLength="30"
+        android:textColor="?android:attr/editTextColor"
         android:textAppearance="?android:attr/textAppearanceMedium" />
 
 </LinearLayout>

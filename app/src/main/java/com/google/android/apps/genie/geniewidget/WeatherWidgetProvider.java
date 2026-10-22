@@ -3,7 +3,7 @@
  * "Genie" widget). Layout, graphics and the rendering (MiniWidgetView.renderWeather(),
  * renderWeatherExtra(), renderViewState()) follow the original; Google's weather service is
  * gone, so the data comes from OpenWeatherMap with the user's own API key and a location set
- * in WeatherWidgetConfigure. Tapping the widget opens the weather app chosen there.
+ * in the launcher settings (WeatherSettings). Tapping the widget opens the weather app chosen there.
  */
 package com.google.android.apps.genie.geniewidget;
 
@@ -34,14 +34,57 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     static final String PREFS = "genie_weather_widget";
     static final String ACTION_RETRY = "com.android.launcher.genie.WEATHER_RETRY";
 
+    /** Settings are the same for all weather widgets (launcher settings), the data is per widget. */
+    private static final java.util.List<String> GLOBAL = java.util.Arrays.asList(
+            "apikey", "query", "name", "lat", "lon", "interval", "app");
+
     static String key(int id, String name) {
-        return id + "_" + name;
+        return GLOBAL.contains(name) ? "cfg_" + name : id + "_" + name;
+    }
+
+    /** Older versions kept the settings per widget: the first widget's become the global ones. */
+    static void migrate(SharedPreferences p) {
+        if (p.contains("cfg_apikey")) return;
+        for (String k : new java.util.ArrayList<String>(p.getAll().keySet())) {
+            if (!k.endsWith("_apikey") || k.startsWith("cfg_") || k.startsWith("last_")) continue;
+            final String x = k.substring(0, k.length() - "apikey".length());
+            final SharedPreferences.Editor e = p.edit()
+                    .putString("cfg_apikey", p.getString(k, ""))
+                    .putString("cfg_query", p.getString(x + "query", ""))
+                    .putString("cfg_name", p.getString(x + "name", ""))
+                    .putFloat("cfg_lat", p.getFloat(x + "lat", 0))
+                    .putFloat("cfg_lon", p.getFloat(x + "lon", 0))
+                    .putInt("cfg_interval", p.getInt(x + "interval", DEFAULT_INTERVAL));
+            if (p.contains(x + "app")) e.putString("cfg_app", p.getString(x + "app", null));
+            e.apply();
+            return;
+        }
+    }
+
+    /** The settings changed: all widgets show the new data (reload) or are drawn again. */
+    static void applySettings(Context context, boolean reload) {
+        final Context app = context.getApplicationContext();
+        NewsWidgetProvider.weatherSettingsChanged(app, reload); // the news widget's weather
+        final AppWidgetManager m = AppWidgetManager.getInstance(app);
+        final int[] ids = m.getAppWidgetIds(component(app));
+        if (ids.length == 0) return;
+        if (reload) {
+            final SharedPreferences.Editor e = app.getSharedPreferences(PREFS, 0).edit();
+            for (int id : ids) e.remove(key(id, "temp")).remove(key(id, "updated"));
+            e.apply();
+            refresh(app, ids, null);
+        } else {
+            for (int id : ids) {
+                com.android.launcher2.LauncherOnly.update(app, m, id, build(app, id, State.READY));
+            }
+        }
     }
 
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
         // Android updates every 30 min (updatePeriodMillis); longer intervals skip updates
         final SharedPreferences prefs = context.getSharedPreferences(PREFS, 0);
+        migrate(prefs);
         final long now = System.currentTimeMillis();
         final java.util.ArrayList<Integer> due = new java.util.ArrayList<Integer>();
         for (int id : ids) {
@@ -52,7 +95,8 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             } else if (prefs.contains(key(id, "temp"))) {
                 // not due: show the last data again (after an app update or a reboot the
                 // widget starts with its initial layout, "Loading...")
-                manager.updateAppWidget(id, build(context, id, State.READY));
+                com.android.launcher2.LauncherOnly.update(context, manager, id,
+                        build(context, id, State.READY));
             }
         }
         final int[] dueIds = new int[due.size()];
@@ -81,7 +125,8 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) return;
         final SharedPreferences prefs = context.getSharedPreferences(PREFS, 0);
         if (!prefs.contains(key(id, "temp"))) return; // still the initial layout
-        manager.updateAppWidget(id, build(context, id, State.READY));
+        com.android.launcher2.LauncherOnly.update(context, manager, id,
+                        build(context, id, State.READY));
     }
 
     @Override
@@ -99,6 +144,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     /** Loads the weather for the widgets off the main thread and renders them. */
     static void refresh(final Context context, final int[] ids, final PendingResult result) {
         final Context app = context.getApplicationContext();
+        migrate(app.getSharedPreferences(PREFS, 0));
         final AppWidgetManager manager = AppWidgetManager.getInstance(app);
         new Thread(() -> {
             try {
@@ -107,7 +153,8 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                     if (!prefs.contains(key(id, "apikey"))) continue; // not configured yet
                     // loading state while there is no data yet (renderViewState())
                     if (!prefs.contains(key(id, "temp"))) {
-                        manager.updateAppWidget(id, build(app, id, State.LOADING));
+                        com.android.launcher2.LauncherOnly.update(app, manager, id,
+                                build(app, id, State.LOADING));
                     }
                     State state;
                     try {
@@ -117,7 +164,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                         android.util.Log.w("WeatherWidget", "update failed: " + e);
                         state = State.FAILED;
                     }
-                    manager.updateAppWidget(id, build(app, id, state));
+                    com.android.launcher2.LauncherOnly.update(app, manager, id, build(app, id, state));
                 }
             } finally {
                 if (result != null) result.finish();
@@ -202,9 +249,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             open = context.getPackageManager().getLaunchIntentForPackage(app);
         }
         if (open == null) {
-            open = new Intent(context, WeatherWidgetConfigure.class)
-                    .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
-                    .setData(Uri.parse("genie:" + id));
+            open = com.android.launcher2.Launcher.Settings.widgetsIntent(context);
         }
         open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         final PendingIntent pi = PendingIntent.getActivity(context, id, open,
@@ -248,7 +293,8 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         return Locale.getDefault().getLanguage();
     }
 
-    private static void load(Context context, int id) throws Exception {
+    /** Also used by NewsWidgetProvider (the weather of the news widget). */
+    static void load(Context context, int id) throws Exception {
         final SharedPreferences prefs = context.getSharedPreferences(PREFS, 0);
         final String apiKey = Uri.encode(prefs.getString(key(id, "apikey"), ""));
         final String loc = "lat=" + prefs.getFloat(key(id, "lat"), 0)

@@ -527,7 +527,8 @@ public class SettingsAppWidgetProvider extends AppWidgetProvider {
         RemoteViews view = buildUpdate(context, -1);
 
         for (int i = 0; i < appWidgetIds.length; i++) {
-            appWidgetManager.updateAppWidget(appWidgetIds[i], view);
+            com.android.launcher2.LauncherOnly.update(context, appWidgetManager,
+                    appWidgetIds[i], view);
         }
     }
 
@@ -567,7 +568,10 @@ public class SettingsAppWidgetProvider extends AppWidgetProvider {
         RemoteViews views = buildUpdate(context, -1);
         // Update specific list of appWidgetIds if given, otherwise default to all
         final AppWidgetManager gm = AppWidgetManager.getInstance(context);
-        gm.updateAppWidget(new ComponentName(context, SettingsAppWidgetProvider.class), views);
+        for (int id : gm.getAppWidgetIds(
+                new ComponentName(context, SettingsAppWidgetProvider.class))) {
+            com.android.launcher2.LauncherOnly.update(context, gm, id, views);
+        }
     }
 
     /**

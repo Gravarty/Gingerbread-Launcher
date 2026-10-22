@@ -24,3 +24,9 @@ android {
     lint { abortOnError false }
     buildFeatures { aidl true } // Tweaks: Google feed (launcherclient)
 }
+
+dependencies {
+    // Installs the baseline profile (src/main/baseline-prof.txt) on first start, so a
+    // sideloaded/GitHub APK gets profile-guided AOT compilation without adb commands.
+    implementation "androidx.profileinstaller:profileinstaller:1.4.1"
+}
