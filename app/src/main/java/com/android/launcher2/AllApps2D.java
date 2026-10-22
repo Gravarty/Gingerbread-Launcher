@@ -268,6 +268,7 @@ public class AllApps2D
     // swipe down at the top of the list closes it, both following the finger). The 2D drawer
     // fades in and out (all_apps_2d_fade_in/out), so a gesture moves its alpha.
     private View mHomeButton;
+    private int[] mGridMargins; // the layout's: right, bottom
     private boolean mDragged;
     private float mNextSpeed; // zoom per second for the settling after a gesture
 
@@ -275,6 +276,23 @@ public class AllApps2D
     private void updateHomeButton() {
         if (mHomeButton != null) {
             mHomeButton.setVisibility(Launcher.sDockAllAppsHidden ? View.GONE : View.VISIBLE);
+        }
+        // without it the grid takes the room the layout keeps free for it: below it in
+        // portrait (layout_marginBottom), right of it in landscape (layout_marginRight)
+        if (mGrid != null) {
+            final ViewGroup.MarginLayoutParams lp =
+                    (ViewGroup.MarginLayoutParams) mGrid.getLayoutParams();
+            if (mGridMargins == null) {
+                mGridMargins = new int[] { lp.rightMargin, lp.bottomMargin };
+            }
+            final boolean hidden = Launcher.sDockAllAppsHidden;
+            final int right = hidden ? 0 : mGridMargins[0];
+            final int bottom = hidden ? 0 : mGridMargins[1];
+            if (lp.rightMargin != right || lp.bottomMargin != bottom) {
+                lp.rightMargin = right;
+                lp.bottomMargin = bottom;
+                mGrid.setLayoutParams(lp);
+            }
         }
     }
 
