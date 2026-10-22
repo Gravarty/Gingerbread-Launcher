@@ -239,17 +239,29 @@ public class AllApps2D
             updateHomeButton(); // Tweaks
             mGrid.setAdapter(mAppsAdapter);
             if (animate) {
-                startAnimation(AnimationUtils.loadAnimation(getContext(), R.anim.all_apps_2d_fade_in));
+                startFade(R.anim.all_apps_2d_fade_in); // Tweaks: system animation speed
             } else {
                 onAnimationEnd();
             }
         } else {
             if (animate) {
-                startAnimation(AnimationUtils.loadAnimation(getContext(), R.anim.all_apps_2d_fade_out));
+                startFade(R.anim.all_apps_2d_fade_out); // Tweaks: system animation speed
             } else {
                 onAnimationEnd();
             }
         }
+    }
+
+    /**
+     * Tweaks: the stock fade with the system's animation speed (developer options), like the
+     * 3D drawer (Utilities.scaleDuration()); view animations don't follow it on their own,
+     * the settling after a gesture (ViewPropertyAnimator) does.
+     */
+    private void startFade(int anim) {
+        final android.view.animation.Animation a =
+                AnimationUtils.loadAnimation(getContext(), anim);
+        a.setDuration(Utilities.scaleDuration((int) a.getDuration()));
+        startAnimation(a);
     }
 
     // Tweaks: gestures like the 3D drawer (swipe up on the home screen opens the drawer,
