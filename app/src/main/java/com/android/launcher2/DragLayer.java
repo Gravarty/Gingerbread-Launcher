@@ -86,7 +86,7 @@ public class DragLayer extends FrameLayout {
             case MotionEvent.ACTION_DOWN:
                 mAllAppsSwiping = false;
                 mAllAppsSwipeCandidate = (launcher.getAllApps3D() != null
-                        || launcher.isAllApps2D()) // Tweaks: the 2D drawer opens at the end
+                        || launcher.getAllApps2D() != null)
                         && !launcher.isAllAppsVisible() && !mDragController.isDragging()
                         && mCurrentResizeFrame == null;
                 mSwipeDownX = ev.getX();
@@ -120,15 +120,19 @@ public class DragLayer extends FrameLayout {
     private void allAppsSwipe(MotionEvent ev) {
         final Launcher launcher = (Launcher) getContext();
         final AllApps3D allApps = launcher.getAllApps3D();
-        if (allApps == null && !launcher.isAllApps2D()) return;
+        final AllApps2D allApps2D = launcher.getAllApps2D(); // Tweaks: 2D drawer
+        if (allApps == null && allApps2D == null) return;
         mSwipeVelocity.addMovement(ev);
         switch (ev.getActionMasked()) {
-            case MotionEvent.ACTION_MOVE:
-                // the 2D drawer can't follow the finger (it only fades in, as in stock)
+            case MotionEvent.ACTION_MOVE: {
+                final float zoom = (mSwipeDownY - ev.getY()) / AllApps3D.gestureDistance(this);
                 if (allApps != null) {
-                    allApps.dragZoom((mSwipeDownY - ev.getY()) / AllApps3D.gestureDistance(this));
+                    allApps.dragZoom(zoom);
+                } else {
+                    allApps2D.dragZoom(zoom);
                 }
                 break;
+            }
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL: {
                 mAllAppsSwiping = false;
@@ -143,8 +147,8 @@ public class DragLayer extends FrameLayout {
                         && (v > minFling || (v > -minFling && zoom > 0.5f));
                 if (allApps != null) {
                     allApps.settleZoom(open, Math.abs(v) / AllApps3D.gestureDistance(this));
-                } else if (open) {
-                    launcher.showAllApps(true); // Tweaks: 2D drawer
+                } else {
+                    allApps2D.settleZoom(open, Math.abs(v) / AllApps3D.gestureDistance(this));
                 }
                 break;
             }

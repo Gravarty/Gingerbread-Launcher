@@ -149,6 +149,7 @@ public class AllApps2D
             
             ImageButton homeButton = (ImageButton) findViewWithTag("all_apps_2d_home");
             if (homeButton == null) throw new Resources.NotFoundException();
+            mHomeButton = homeButton; // Tweaks
             homeButton.setOnClickListener(
                 new View.OnClickListener() {
                     public void onClick(View v) {
@@ -225,11 +226,17 @@ public class AllApps2D
 //        Log.d(TAG, "zooming " + ((zoom == 1.0) ? "open" : "closed"));
         cancelLongPress();
 
+        if (mDragged) { // Tweaks: a gesture moved the drawer, continue from there
+            settle(zoom, animate);
+            return;
+        }
+
         mZoom = zoom;
 
         if (isVisible()) {
             getParent().bringChildToFront(this);
             setVisibility(View.VISIBLE);
+            updateHomeButton(); // Tweaks
             mGrid.setAdapter(mAppsAdapter);
             if (animate) {
                 startAnimation(AnimationUtils.loadAnimation(getContext(), R.anim.all_apps_2d_fade_in));
@@ -243,6 +250,132 @@ public class AllApps2D
                 onAnimationEnd();
             }
         }
+    }
+
+    // Tweaks: gestures like the 3D drawer (swipe up on the home screen opens the drawer,
+    // swipe down at the top of the list closes it, both following the finger). The 2D drawer
+    // fades in and out (all_apps_2d_fade_in/out), so a gesture moves its alpha.
+    private View mHomeButton;
+    private boolean mDragged;
+    private float mNextSpeed; // zoom per second for the settling after a gesture
+
+    /** Tweaks: no home button when the dock has no all apps button either. */
+    private void updateHomeButton() {
+        if (mHomeButton != null) {
+            mHomeButton.setVisibility(Launcher.sDockAllAppsHidden ? View.GONE : View.VISIBLE);
+        }
+    }
+
+    /** Tweaks: the drawer at the zoom of a gesture (0 hidden, 1 open). */
+    void dragZoom(float zoom) {
+        zoom = Math.max(0, Math.min(1, zoom));
+        cancelLongPress();
+        animate().cancel();
+        clearAnimation();
+        if (!mDragged && !isVisible()) {
+            getParent().bringChildToFront(this);
+            setVisibility(View.VISIBLE);
+            updateHomeButton();
+            mGrid.setAdapter(mAppsAdapter);
+        }
+        mDragged = true;
+        // stays "visible" at 0 so that closeAllApps() still closes it (isVisible())
+        mZoom = Math.max(zoom, 0.002f);
+        setAlpha(zoom);
+    }
+
+    /** Tweaks: finger released: open or close, continuing with speed (zoom per second). */
+    void settleZoom(boolean open, float speed) {
+        mNextSpeed = speed;
+        if (open) {
+            mLauncher.showAllApps(true);
+        } else {
+            mLauncher.closeAllApps(true);
+        }
+        mNextSpeed = 0;
+    }
+
+    private void settle(final float zoom, boolean animate) {
+        mZoom = zoom;
+        final float target = zoom > 0.5f ? 1f : 0f;
+        // at least as fast as the stock fade (all_apps_2d_fade_in/out)
+        final float fadeTime = getResources().getInteger(target > 0
+                ? R.integer.config_allAppsFadeInTime : R.integer.config_allAppsFadeOutTime);
+        final float speed = Math.max(1000f / fadeTime, mNextSpeed);
+        final long duration = animate
+                ? (long) (Math.abs(target - getAlpha()) / speed * 1000) : 0;
+        animate().alpha(target).setDuration(duration)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                .withEndAction(() -> {
+                    mDragged = false;
+                    setAlpha(1f); // the stock fades animate on top of a full alpha
+                    onAnimationEnd();
+                });
+    }
+
+    private boolean mCloseDragging;
+    private boolean mCloseAllowed;
+    private float mCloseDownX, mCloseDownY;
+    private android.view.VelocityTracker mCloseVelocity;
+
+    /** Tweaks: swipe down at the top of the list closes the drawer (see AllApps3D). */
+    @Override
+    public boolean onInterceptTouchEvent(android.view.MotionEvent ev) {
+        if (!Launcher.SWIPE_UP_ALL_APPS || !isVisible() || mDragged) return false;
+        switch (ev.getActionMasked()) {
+            case android.view.MotionEvent.ACTION_DOWN: {
+                mCloseDragging = false;
+                mCloseDownX = ev.getRawX();
+                mCloseDownY = ev.getRawY();
+                // only at the top of the list
+                final View first = mGrid.getChildAt(0);
+                mCloseAllowed = first == null || (mGrid.getFirstVisiblePosition() == 0
+                        && first.getTop() >= mGrid.getPaddingTop());
+                return false;
+            }
+            case android.view.MotionEvent.ACTION_MOVE: {
+                final float dy = ev.getRawY() - mCloseDownY;
+                final float dx = Math.abs(ev.getRawX() - mCloseDownX);
+                final int slop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
+                if (mCloseAllowed && dy > slop && dy > dx) {
+                    mCloseDragging = true;
+                    mCloseDownY += slop; // start at 0 from here on
+                    mCloseVelocity = android.view.VelocityTracker.obtain();
+                    mCloseVelocity.addMovement(ev);
+                    return true;
+                }
+                return false;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean onTouchEvent(android.view.MotionEvent ev) {
+        if (!mCloseDragging) return super.onTouchEvent(ev);
+        mCloseVelocity.addMovement(ev);
+        switch (ev.getActionMasked()) {
+            case android.view.MotionEvent.ACTION_MOVE:
+                dragZoom(1f - Math.max(0, ev.getRawY() - mCloseDownY)
+                        / AllApps3D.gestureDistance(this));
+                break;
+            case android.view.MotionEvent.ACTION_UP:
+            case android.view.MotionEvent.ACTION_CANCEL: {
+                mCloseDragging = false;
+                mCloseVelocity.computeCurrentVelocity(1000);
+                final float v = mCloseVelocity.getYVelocity(); // px/s, down > 0
+                mCloseVelocity.recycle();
+                mCloseVelocity = null;
+                final float minFling =
+                        ViewConfiguration.get(getContext()).getScaledMinimumFlingVelocity() * 4;
+                final boolean close = ev.getActionMasked() == android.view.MotionEvent.ACTION_UP
+                        && (v > minFling || (v > -minFling && mZoom < 0.5f));
+                if (!mDragged) break; // never moved past the slop
+                settleZoom(!close, Math.abs(v) / AllApps3D.gestureDistance(this));
+                break;
+            }
+        }
+        return true;
     }
 
     protected void onAnimationEnd() {

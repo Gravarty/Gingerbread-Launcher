@@ -2560,8 +2560,8 @@ public final class Launcher extends Activity
     }
 
     // Tweaks: the 2D drawer is chosen in the settings
-    boolean isAllApps2D() {
-        return mAllAppsGrid instanceof AllApps2D;
+    AllApps2D getAllApps2D() {
+        return mAllAppsGrid instanceof AllApps2D ? (AllApps2D) mAllAppsGrid : null;
     }
 
     // Tweaks: all apps following a finger (swipe up on the home screen, down in all apps)
