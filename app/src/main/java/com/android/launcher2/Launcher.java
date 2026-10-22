@@ -424,12 +424,54 @@ public final class Launcher extends Activity
     static int ICON_PACK_BG = DEFAULT_ICON_PACK_BG;
     static final String TWEAK_HIDDEN_APPS = "hidden_apps"; // flattened ComponentNames
 
+    // Tweaks: automatic home grid as Launcher3 picks it on Android 11
+    // (android11-release InvariantDeviceProfile.invDistWeightedInterpolate + device_profiles.xml):
+    // the grid of the display-option closest to the display size in dp
+    private static final float[][] AUTO_GRID_PROFILES = {
+            // minWidthDps, minHeightDps, numColumns, numRows
+            { 255, 300, 3, 3 },     // 3_by_3: Super Short Stubby
+            { 255, 400, 3, 3 },     // 3_by_3: Shorter Stubby
+            { 275, 420, 4, 4 },     // 4_by_4: Short Stubby
+            { 255, 450, 4, 4 },     // 4_by_4: Stubby
+            { 296, 491.33f, 4, 4 }, // 4_by_4: Nexus S
+            { 359, 567, 4, 4 },     // 4_by_4: Nexus 4
+            { 335, 567, 4, 4 },     // 4_by_4: Nexus 5
+            { 406, 694, 5, 5 },     // 5_by_5: Large Phone
+            { 255, 400, 5, 5 },     // 5_by_5: Shorter Stubby
+    };
+
+    static int[] autoGrid(Context context) {
+        final Display display = context.getSystemService(
+                android.hardware.display.DisplayManager.class).getDisplay(Display.DEFAULT_DISPLAY);
+        final android.graphics.Point smallest = new android.graphics.Point();
+        final android.graphics.Point largest = new android.graphics.Point();
+        display.getCurrentSizeRange(smallest, largest);
+        final float density = context.getResources().getDisplayMetrics().densityDpi
+                / (float) android.util.DisplayMetrics.DENSITY_DEFAULT;
+        // This guarantees that width < height
+        final float width = Math.min(smallest.x, smallest.y) / density;
+        final float height = Math.min(largest.x, largest.y) / density;
+        float[] closest = AUTO_GRID_PROFILES[0];
+        float best = Float.MAX_VALUE;
+        for (float[] p : AUTO_GRID_PROFILES) {
+            final float d = (float) Math.hypot(p[0] - width, p[1] - height);
+            if (d < best) { // first one wins a tie, like the stable sort there
+                best = d;
+                closest = p;
+            }
+        }
+        return new int[] { (int) closest[2], (int) closest[3] };
+    }
+
     // Tweaks
     static void loadTweaks(Context context) {
         final android.content.SharedPreferences prefs =
                 context.getSharedPreferences(TWEAKS_PREFERENCES, MODE_PRIVATE);
-        NUMBER_CELLS_X = prefs.getInt(TWEAK_HOME_COLUMNS, 4);
-        NUMBER_CELLS_Y = prefs.getInt(TWEAK_HOME_ROWS, 4);
+        final int columns = prefs.getInt(TWEAK_HOME_COLUMNS, 0); // 0 = automatic
+        final int rows = prefs.getInt(TWEAK_HOME_ROWS, 0);
+        final int[] auto = (columns == 0 || rows == 0) ? autoGrid(context) : null;
+        NUMBER_CELLS_X = columns != 0 ? columns : auto[0];
+        NUMBER_CELLS_Y = rows != 0 ? rows : auto[1];
         SCREEN_COUNT = Math.max(1, Math.min(5, prefs.getInt(TWEAK_HOME_SCREENS, 5)));
         DEFAULT_SCREEN = (SCREEN_COUNT - 1) / 2; // the middle one, 2 of 5 as in stock
         SWIPE_DOWN_NOTIFICATIONS = prefs.getBoolean(TWEAK_SWIPE_DOWN_NOTIFICATIONS, false);
@@ -2848,8 +2890,8 @@ public final class Launcher extends Activity
             }
             if (page == R.string.tweaks_category_home) {
                 mPage.addCategory(R.string.tweaks_category_grid);
-                addNumber(R.string.tweaks_columns, TWEAK_HOME_COLUMNS, 3, 7, 4, false);
-                addNumber(R.string.tweaks_rows, TWEAK_HOME_ROWS, 3, 8, 4, false);
+                addNumber(R.string.tweaks_columns, TWEAK_HOME_COLUMNS, 3, 7, 0, true);
+                addNumber(R.string.tweaks_rows, TWEAK_HOME_ROWS, 3, 8, 0, true);
                 mPage.addCategory(R.string.tweaks_category_screens);
                 addNumber(R.string.tweaks_screens, TWEAK_HOME_SCREENS, 1, 5, 5, false);
                 mPage.addCategory(R.string.tweaks_category_gestures);
