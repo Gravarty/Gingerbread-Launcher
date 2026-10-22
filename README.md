@@ -21,7 +21,7 @@ The goal is the original look and feel: the 3D app drawer, the dock, Droid Sans 
 - Weather, from *News and Weather* 1.3.01: original layout and graphics, data from OpenWeatherMap with your own API key
 - News and YouTube widgets
 
-All of them can be resized and also work in other launchers.
+The analog clock can be resized freely, the others horizontally. Weather, News and YouTube are set up in the launcher settings.
 
 ## Optional settings
 
