@@ -142,6 +142,10 @@ public final class Launcher extends Activity
     static final String TWEAK_HOME_ROWS = "home_rows";
     static final String TWEAK_DRAWER_COLUMNS = "drawer_columns";
     static final String TWEAK_DRAWER_ROWS = "drawer_rows";
+    // Tweaks: app drawer style, 0 = 3D (stock), 1 = 2D (AllApps2D, the Gingerbread drawer for
+    // devices without RenderScript)
+    static final String TWEAK_DRAWER_STYLE = "drawer_style";
+    static boolean DRAWER_2D = false;
     static final String TWEAK_HOME_SCREENS = "home_screens";
     static final String TWEAK_SWIPE_DOWN_NOTIFICATIONS = "swipe_down_notifications";
     // Tweaks: extra dock slots, added in the order
@@ -430,6 +434,7 @@ public final class Launcher extends Activity
         DEFAULT_SCREEN = (SCREEN_COUNT - 1) / 2; // the middle one, 2 of 5 as in stock
         SWIPE_DOWN_NOTIFICATIONS = prefs.getBoolean(TWEAK_SWIPE_DOWN_NOTIFICATIONS, false);
         SWIPE_UP_ALL_APPS = prefs.getBoolean(TWEAK_SWIPE_UP_ALL_APPS, false);
+        DRAWER_2D = prefs.getInt(TWEAK_DRAWER_STYLE, 0) == 1;
         FEED = prefs.getInt(TWEAK_FEED, FeedOverlay.PROVIDER_OFF);
         BADGES = prefs.getBoolean(TWEAK_BADGES, false);
         if (prefs.contains(TWEAK_NO_BAR_BACKGROUNDS)) { // one setting for both bars before
@@ -1169,6 +1174,14 @@ public final class Launcher extends Activity
         DragLayer dragLayer = (DragLayer) findViewById(R.id.drag_layer);
         dragLayer.setDragController(dragController);
 
+        if (DRAWER_2D) { // Tweaks: the 2D drawer in place of the 3D one (all_apps.xml)
+            final View allApps3D = dragLayer.findViewById(R.id.all_apps_view);
+            final ViewGroup parent = (ViewGroup) allApps3D.getParent();
+            final int index = parent.indexOfChild(allApps3D);
+            parent.removeViewAt(index);
+            parent.addView(getLayoutInflater().inflate(R.layout.all_apps_2d, parent, false),
+                    index);
+        }
         mAllAppsGrid = (AllAppsView)dragLayer.findViewById(R.id.all_apps_view);
         mAllAppsGrid.setLauncher(this);
         mAllAppsGrid.setDragController(dragController);
@@ -2546,6 +2559,11 @@ public final class Launcher extends Activity
         }
     }
 
+    // Tweaks: the 2D drawer is chosen in the settings
+    boolean isAllApps2D() {
+        return mAllAppsGrid instanceof AllApps2D;
+    }
+
     // Tweaks: all apps following a finger (swipe up on the home screen, down in all apps)
     AllApps3D getAllApps3D() {
         return mAllAppsGrid instanceof AllApps3D ? (AllApps3D) mAllAppsGrid : null;
@@ -2840,6 +2858,9 @@ public final class Launcher extends Activity
                         R.string.tweaks_feed_off, R.string.tweaks_feed_google,
                         R.string.tweaks_feed_aidl_bridge });
             } else if (page == R.string.tweaks_category_drawer) {
+                mPage.addCategory(R.string.tweaks_category_drawer_style);
+                addChoice(R.string.tweaks_drawer_style, TWEAK_DRAWER_STYLE, new int[] {
+                        R.string.tweaks_drawer_style_3d, R.string.tweaks_drawer_style_2d });
                 mPage.addCategory(R.string.tweaks_category_grid);
                 addNumber(R.string.tweaks_columns, TWEAK_DRAWER_COLUMNS, 2, 7, 0, true);
                 addNumber(R.string.tweaks_rows, TWEAK_DRAWER_ROWS, 2, 8, 0, true);

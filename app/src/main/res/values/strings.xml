@@ -240,4 +240,8 @@
     <string name="tweaks_dock_phone">"Phone"</string>
     <string name="tweaks_dock_all_apps">"All apps"</string>
     <string name="tweaks_dock_browser">"Browser"</string>
+    <string name="tweaks_category_drawer_style">"App drawer"</string>
+    <string name="tweaks_drawer_style">"Style"</string>
+    <string name="tweaks_drawer_style_3d">"3D (Gingerbread)"</string>
+    <string name="tweaks_drawer_style_2d">"2D (simple grid)"</string>
 </resources>

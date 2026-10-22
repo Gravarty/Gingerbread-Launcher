@@ -154,4 +154,8 @@
     <string name="tweaks_dock_phone">"Telefon"</string>
     <string name="tweaks_dock_all_apps">"Alle Apps"</string>
     <string name="tweaks_dock_browser">"Browser"</string>
+    <string name="tweaks_category_drawer_style">"App-Drawer"</string>
+    <string name="tweaks_drawer_style">"Darstellung"</string>
+    <string name="tweaks_drawer_style_3d">"3D (Gingerbread)"</string>
+    <string name="tweaks_drawer_style_2d">"2D (einfaches Raster)"</string>
 </resources>
