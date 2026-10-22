@@ -1181,6 +1181,11 @@ public final class Launcher extends Activity
             parent.removeViewAt(index);
             parent.addView(getLayoutInflater().inflate(R.layout.all_apps_2d, parent, false),
                     index);
+            // The DragLayer's padding are the system bars (onApplyWindowInsets()); the 2D
+            // drawer is laid out over the whole screen like the 3D one, but as a normal view
+            // it was clipped to that padding (the 3D drawer is a SurfaceView): its black
+            // background has to reach under the bars too
+            dragLayer.setClipToPadding(false);
         }
         mAllAppsGrid = (AllAppsView)dragLayer.findViewById(R.id.all_apps_view);
         mAllAppsGrid.setLauncher(this);
