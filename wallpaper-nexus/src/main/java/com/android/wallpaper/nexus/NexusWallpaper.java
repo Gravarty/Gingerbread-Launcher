@@ -16,7 +16,7 @@
 
 /*
  * Port notes: the "Nexus" live wallpaper of AOSP packages/wallpapers/Basic
- * (android-2.3.7_r1), bundled with the launcher. The original ran on RenderScriptGL
+ * (android-2.3.7_r1), as its own APK. The original ran on RenderScriptGL
  * (RenderScriptWallpaper, RenderScriptScene, NexusRS and res/raw/nexus.rs), which was
  * removed from Android. This file contains the same pieces on OpenGL ES:
  *  - Engine: RenderScriptWallpaper.RenderScriptEngine (+ an EGL render thread instead of
@@ -35,8 +35,6 @@
  */
 
 package com.android.wallpaper.nexus;
-
-import com.android.launcher.R;
 
 import android.content.res.Resources;
 import android.graphics.Bitmap;
@@ -413,8 +411,8 @@ public class NexusWallpaper extends WallpaperService {
         private final Script mScript = new Script();
 
         void initGl() {
-            mTBackground = loadTextureARGB(mCrespo
-                    ? R.drawable.pyramid_background_crespo : R.drawable.pyramid_background);
+            // Port: pyramid_background or pyramid_background_crespo, set by each APK
+            mTBackground = loadTextureARGB(R.drawable.nexus_background);
             mTPulse = loadTextureARGB(R.drawable.pulse);
             mTPulseVert = loadTextureARGB(R.drawable.pulse_vert);
             mTGlow = loadTextureARGB(R.drawable.glow);

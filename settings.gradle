@@ -7,3 +7,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "GingerbreadLauncher"
 include ":app"
+include ":wallpaper-nexus", ":wallpaper-nexus-s" // Port: live wallpapers as their own APKs
