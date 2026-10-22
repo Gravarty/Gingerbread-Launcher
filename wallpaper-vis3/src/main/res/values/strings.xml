@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- From AOSP packages/wallpapers/MusicVisualization (android-2.3.7_r1). -->
+<resources>
+    <string name="wallpaper_vis3">Spectrum</string>
+    <string name="author">Google</string>
+    <string name="vis3_desc">Shows the frequency spectrum of any currently playing music track.</string>
+</resources>

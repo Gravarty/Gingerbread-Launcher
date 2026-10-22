@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- From AOSP packages/wallpapers/Basic (android-2.3.7_r1). -->
+<resources>
+    <string name="wallpaper_fall">"Wasser"</string>
+    <string name="wallpaper_fall_author">"Google"</string>
+    <string name="wallpaper_fall_desc">"Bunte Blätter fallen&lt;br&gt; In den sich kräuselnden Teich:&lt;br&gt; Wasserhintergrund Zen"</string>
+</resources>

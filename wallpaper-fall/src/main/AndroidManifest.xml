@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-feature android:name="android.software.live_wallpaper" />
+
+    <application android:label="@string/wallpaper_fall">
+
+        <!-- Port: the "Water" (Fall) live wallpaper from AOSP packages/wallpapers/Basic. -->
+        <service
+            android:label="@string/wallpaper_fall"
+            android:name="com.android.wallpaper.fall.FallWallpaper"
+            android:permission="android.permission.BIND_WALLPAPER"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.wallpaper.WallpaperService" />
+            </intent-filter>
+            <meta-data android:name="android.service.wallpaper" android:resource="@xml/fall" />
+        </service>
+
+    </application>
+</manifest>

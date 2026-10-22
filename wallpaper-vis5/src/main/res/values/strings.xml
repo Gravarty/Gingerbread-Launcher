@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- From AOSP packages/wallpapers/MusicVisualization (android-2.3.7_r1). -->
+<resources>
+    <string name="wallpaper_vis5">Many</string>
+    <string name="author">Google</string>
+    <string name="vis5_desc">All music visualizations together, slowly revolving in 3D.</string>
+</resources>

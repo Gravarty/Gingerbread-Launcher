@@ -1,0 +1,26 @@
+plugins { id "com.android.application" }
+
+// Port: the Polar clock live wallpaper (AOSP packages/wallpapers/Basic) as its own APK
+android {
+    namespace "com.android.wallpaper"
+    compileSdk 37
+
+    defaultConfig {
+        applicationId "com.gravarty.wallpaper.polarclock"
+        minSdk 30
+        targetSdk 37
+        versionCode 1
+        versionName "2.3.7"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    lint { abortOnError false }
+}

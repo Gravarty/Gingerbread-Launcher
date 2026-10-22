@@ -1,0 +1,32 @@
+plugins { id "com.android.application" }
+
+// Port: the "Spectrum" music visualization live wallpaper (AOSP packages/wallpapers/MusicVisualization) as its own APK
+android {
+    namespace "com.android.musicvis"
+    compileSdk 37
+
+    defaultConfig {
+        applicationId "com.gravarty.wallpaper.vis3"
+        minSdk 30
+        targetSdk 37
+        versionCode 1
+        versionName "2.3.7"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    lint { abortOnError false }
+    sourceSets {
+        main {
+            java.srcDir "../wallpaper-common/src/main/java" // the RenderScript port
+            java.srcDir "../wallpaper-musicvis/src/main/java" // the visualizations' common code
+        }
+    }
+}
