@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- From AOSP packages/wallpapers/MusicVisualization (android-2.3.7_r1). -->
-<resources>
-    <string name="wallpaper_vis2">Waveform</string>
-    <string name="author">Google</string>
-    <string name="vis2_desc">Draws the sound wave of any currently playing music track.</string>
-</resources>

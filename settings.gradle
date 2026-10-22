@@ -7,8 +7,3 @@ dependencyResolutionManagement {
 }
 rootProject.name = "GingerbreadLauncher"
 include ":app"
-// Port: the Gingerbread live wallpapers, each as its own APK
-include ":wallpaper-nexus", ":wallpaper-nexus-s"
-include ":wallpaper-galaxy", ":wallpaper-grass", ":wallpaper-fall", ":wallpaper-polarclock"
-include ":wallpaper-magicsmoke"
-include ":wallpaper-vis2", ":wallpaper-vis3", ":wallpaper-vis4", ":wallpaper-vis5"

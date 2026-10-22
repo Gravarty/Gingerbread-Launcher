@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Port: the background of this APK's variant (device/samsung/crespo overlay) -->
-    <drawable name="nexus_background">@drawable/pyramid_background_crespo</drawable>
-</resources>

@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- From AOSP packages/wallpapers/Basic (android-2.3.7_r1). -->
-<resources>
-    <string name="wallpaper_galaxy">"Galaxie"</string>
-    <string name="wallpaper_galaxy_author">"Google"</string>
-    <string name="wallpaper_galaxy_desc">"Eine Galaxie aus langsam herumwirbelnden Sternen"</string>
-</resources>

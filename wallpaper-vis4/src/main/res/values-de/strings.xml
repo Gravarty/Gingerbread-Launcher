@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- From AOSP packages/wallpapers/MusicVisualization (android-2.3.7_r1). -->
-<resources>
-    <string name="wallpaper_vis4">"Aussteuerungsmesser"</string>
-    <string name="author">"Google"</string>
-    <string name="vis4_desc">"Simuliert einen analogen Schallpegelmesser."</string>
-</resources>
